@@ -1,0 +1,66 @@
+:root {
+    --primary: #1e3a8a;
+    --accent: #d97706;
+    --danger: #ef4444;
+}
+body {
+    font-family: 'Noto Sans JP', sans-serif;
+    scroll-behavior: smooth;
+}
+.hero-bg {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    position: relative;
+    overflow: hidden;
+}
+.text-gradient {
+    background: linear-gradient(to right, #1e3a8a, #3b82f6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.btn-hover {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.btn-hover:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+details summary::-webkit-details-marker {
+    display: none;
+}
+:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 2px;
+}
+/* フォーカス時のアウトライン（アクセシビリティ強化） */
+input:focus, select:focus, textarea:focus, button:focus {
+    outline: 3px solid #d97706 !important;
+    outline-offset: 2px;
+}
+
+/* ポートフォリオ用の警告バナー */
+.sample-banner {
+    background-color: #fffbeb;
+    border-bottom: 1px solid #fde68a;
+    color: #92400e;
+    padding: 8px 16px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* 入力項目のスタイル調整 */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+.form-label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+.form-control {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background-color: #f8fafc;
+}
