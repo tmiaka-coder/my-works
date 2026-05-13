@@ -1,16 +1,16 @@
 import { Map, BookOpen, BarChart2, Settings } from 'lucide-react'
 
 const TABS = [
-  { id: 'map',      label: 'マップ',  Icon: Map       },
-  { id: 'diary',    label: '思い出',  Icon: BookOpen  },
-  { id: 'stats',    label: '統計',    Icon: BarChart2 },
-  { id: 'settings', label: '設定',    Icon: Settings  },
+  { id: 'map',      label: 'Map',      Icon: Map       },
+  { id: 'diary',    label: 'Memories', Icon: BookOpen  },
+  { id: 'stats',    label: 'Stats',    Icon: BarChart2 },
+  { id: 'settings', label: 'Settings', Icon: Settings  },
 ]
 
 export default function BottomNav({ activeTab, onTabChange, themeStyle }) {
   return (
     <nav
-      aria-label="メインナビゲーション"
+      aria-label="Main navigation"
       className={`fixed bottom-0 left-0 right-0 z-50 flex border-t
                  ${themeStyle?.nav ?? 'bg-white border-gray-200'}`}
     >
@@ -24,7 +24,7 @@ export default function BottomNav({ activeTab, onTabChange, themeStyle }) {
             aria-current={active ? 'page' : undefined}
             className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-xs
                         transition-colors focus:outline-none focus-visible:ring-2
-                        focus-visible:ring-inset
+                        focus-visible:ring-green-500 focus-visible:ring-inset
                         ${active
                           ? themeStyle?.activeNav ?? 'text-green-600'
                           : themeStyle?.inactiveNav ?? 'text-gray-400 hover:text-gray-600'
