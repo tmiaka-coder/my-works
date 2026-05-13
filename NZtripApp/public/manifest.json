@@ -1,0 +1,16 @@
+{
+  "name": "NZ Trace & Memory",
+  "short_name": "NZ Trace",
+  "description": "ニュージーランドの旅の軌跡と思い出を記録するアプリ",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f9fafb",
+  "theme_color": "#16a34a",
+  "lang": "ja",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ],
+  "categories": ["travel", "navigation"],
+  "orientation": "portrait"
+}
