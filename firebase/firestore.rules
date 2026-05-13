@@ -1,0 +1,47 @@
+// firebase/firestore.rules
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 認証済みユーザーのみアクセス可
+    function isAuthed() {
+      return request.auth != null;
+    }
+
+    // ルート（軌跡）コレクション
+    match /routes/{routeId} {
+      allow read: if isAuthed();
+      allow create: if isAuthed()
+        && request.resource.data.keys().hasAll(['userId', 'points', 'createdAt', 'distance'])
+        && request.resource.data.userId is string
+        && request.resource.data.userId.size() <= 64
+        && request.resource.data.points is list
+        && request.resource.data.distance is number;
+      allow update, delete: if isAuthed()
+        && resource.data.userId == request.auth.uid;
+    }
+
+    // 思い出（メモリ）コレクション
+    match /memories/{memoryId} {
+      allow read: if isAuthed();
+      allow create: if isAuthed()
+        && request.resource.data.keys().hasAll(['userId', 'lat', 'lng', 'text', 'createdAt'])
+        && request.resource.data.text is string
+        && request.resource.data.text.size() <= 1000
+        && request.resource.data.lat is number
+        && request.resource.data.lng is number;
+      allow update, delete: if isAuthed()
+        && resource.data.userId == request.auth.uid;
+    }
+
+    // ユーザー設定コレクション
+    match /userSettings/{uid} {
+      allow read, write: if isAuthed() && request.auth.uid == uid
+        && (
+          !request.resource.data.keys().hasAny(['displayName']) ||
+          (request.resource.data.displayName is string
+           && request.resource.data.displayName.size() <= 30)
+        );
+    }
+  }
+}

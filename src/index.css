@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+/* Leafletのz-index調整 */
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 800 !important;
+}
+
+/* スクロールバー非表示（モバイル） */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* フォーカスリング強調（アクセシビリティ） */
+:focus-visible {
+  outline: 2px solid #22c55e;
+  outline-offset: 2px;
+}
