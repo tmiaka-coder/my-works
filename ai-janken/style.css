@@ -1,0 +1,68 @@
+/* ============================================================
+   AI Janken - Styles
+   ============================================================ */
+
+/* カメラ映像を鏡像反転（自然な操作感のため） */
+#user-video {
+    transform: scaleX(-1);
+    object-fit: cover;
+    filter: contrast(1.05) brightness(1.05);
+}
+
+/* カードベーススタイル */
+.game-card {
+    background: #ffffff;
+    padding: 0.75rem;
+    border-radius: 1rem;
+    box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s ease;
+}
+
+.player-card {
+    border: 2px solid #dbeafe; /* blue-100 */
+}
+
+/* 手の表示コンテナ */
+.hand-container {
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.score-display {
+    text-align: center;
+}
+
+/* ステータスバッジ */
+.status-badge {
+    backdrop-filter: blur(4px);
+    background-color: rgba(37, 99, 235, 0.9);
+}
+
+/* フォーカスリング（アクセシビリティ） */
+.play-btn:focus-visible {
+    outline: 4px solid #2563eb;
+    outline-offset: 4px;
+}
+
+.icon {
+    display: inline-block;
+}
+
+/* ============================================================
+   レスポンシブ調整
+   ============================================================ */
+@media (min-width: 640px) {
+    .game-card {
+        padding: 1.5rem;
+        border-radius: 1.5rem;
+    }
+
+    .hand-container {
+        aspect-ratio: 4 / 3;
+    }
+}

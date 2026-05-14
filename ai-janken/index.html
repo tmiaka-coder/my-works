@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIじゃんけん</title>
+
+    <!-- PWA設定 -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="apple-touch-icon" href="icon-192x192.png">
+
+    <!-- Tailwind CSS (CDN / SRI hash付き) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- MediaPipe Hands (SRI hash付きで改ざん検知) -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js"
+            crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js"
+            crossorigin="anonymous"></script>
+
+    <link rel="stylesheet" href="style.css">
+
+    <!--
+      セキュリティ方針:
+      - このアプリは外部APIキーを一切使用しません
+      - MediaPipe による手の認識はすべてブラウザ内（ローカル）で完結します
+      - カメラ映像はサーバーへ送信されません
+    -->
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans min-h-screen flex flex-col items-center py-6 px-3">
+
+    <header class="mb-4 text-center">
+        <h1 class="text-2xl font-extrabold text-slate-800 mb-1">AIじゃんけん</h1>
+        <p class="text-xs text-slate-600">カメラに手をかざしてCPUと対戦しよう！</p>
+    </header>
+
+    <!-- メインゲームエリア -->
+    <main class="w-full max-w-5xl grid grid-cols-2 gap-2 sm:gap-6">
+
+        <!-- プレイヤーエリア (左) -->
+        <section aria-labelledby="player-label" class="game-card player-card flex flex-col items-center">
+            <h2 id="player-label" class="text-sm sm:text-lg font-bold mb-2 flex items-center gap-1">
+                <span class="icon" aria-hidden="true">🙋</span> あなた
+            </h2>
+
+            <div class="hand-container w-full mb-2 overflow-hidden bg-black shadow-inner">
+                <video id="user-video" class="w-full h-full" playsinline autoplay muted
+                       aria-label="プレイヤーのカメラ映像"></video>
+                <div id="ai-badge"
+                     class="status-badge absolute bottom-2 left-2 bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold shadow-sm"
+                     role="status" aria-live="polite">
+                    AI 起動中...
+                </div>
+            </div>
+
+            <div class="w-full mb-2 text-center p-1 sm:p-2 bg-white border border-blue-200 rounded-lg shadow-sm">
+                <p class="text-[10px] text-slate-400 font-bold uppercase">あなたの手</p>
+                <div id="player-gesture" class="text-sm sm:text-xl font-bold text-blue-600 truncate"
+                     aria-live="polite">
+                    待機中...
+                </div>
+            </div>
+
+            <div class="score-display bg-blue-50 w-full py-2 rounded-lg border border-blue-100">
+                <p class="text-[10px] text-blue-500 font-bold uppercase tracking-widest">スコア</p>
+                <p id="player-score" class="text-2xl font-black text-blue-700" aria-label="あなたのスコア">0</p>
+            </div>
+        </section>
+
+        <!-- CPUエリア (右) -->
+        <section aria-labelledby="cpu-label" class="game-card flex flex-col items-center">
+            <h2 id="cpu-label" class="text-sm sm:text-lg font-bold mb-2 flex items-center gap-1">
+                <span class="icon" aria-hidden="true">🤖</span> CPU
+            </h2>
+
+            <div id="cpu-hand-display"
+                 class="hand-container w-full mb-2 bg-slate-100 border border-dashed border-slate-300"
+                 aria-live="polite">
+                <span class="hand-icon text-4xl sm:text-6xl" role="img" aria-label="CPUの手">?</span>
+            </div>
+
+            <!-- スペーサー（高さ揃え） -->
+            <div class="w-full mb-2 text-center p-1 sm:p-2 bg-slate-50 border border-slate-200 rounded-lg opacity-0"
+                 aria-hidden="true">
+                <p class="text-[10px]">Spacer</p>
+                <div class="text-sm sm:text-xl font-bold">---</div>
+            </div>
+
+            <div class="score-display bg-slate-100 w-full py-2 rounded-lg border border-slate-200">
+                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">スコア</p>
+                <p id="cpu-score" class="text-2xl font-black text-slate-800" aria-label="CPUのスコア">0</p>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- コントロールエリア -->
+    <footer class="mt-6 text-center w-full max-w-2xl px-2">
+        <div id="game-status"
+             class="mb-4 text-lg sm:text-xl font-bold text-slate-700 h-8 flex items-center justify-center"
+             role="alert" aria-live="assertive"></div>
+
+        <button id="play-button"
+                class="play-btn w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white text-xl font-bold py-4 px-12 rounded-2xl shadow-lg transform transition-all active:scale-95 focus:ring-4 focus:ring-blue-400 focus:outline-none"
+                type="button">
+            じゃんけん、ぽん！
+        </button>
+
+        <p class="mt-6 text-slate-400 text-[10px] italic leading-tight">
+            プレイにはカメラの許可が必要です。<br>
+            AIの解析はブラウザ内で安全に完結します。カメラ映像は外部に送信されません。
+        </p>
+    </footer>
+
+    <script src="script.js"></script>
+    <script>
+        /**
+         * Service Worker の登録（HTTPS 環境のみ）
+         * - GitHub Pages は HTTPS なので本番では有効になります
+         * - http://localhost 等では無効（意図的）
+         */
+        (function () {
+            'use strict';
+            if ('serviceWorker' in navigator && window.location.protocol === 'https:') {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('./sw.js')
+                        .then(() => console.log('[PWA] Service Worker registered.'))
+                        .catch(err => console.warn('[PWA] Registration failed:', err));
+                });
+            }
+        })();
+    </script>
+</body>
+</html>
