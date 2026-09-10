@@ -250,12 +250,27 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
     await batch.commit();
   }
 
-  Future<void> saveData() async {
-    await _saveLocalData();
+  Future<bool> saveData() async {
     try {
+      await _saveLocalData();
       _firebaseUser ??= FirebaseAuth.instance.currentUser ?? (await FirebaseAuth.instance.signInAnonymously()).user;
       await _saveToFirestore();
-    } catch (_) {}
+      return true;
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('保存に失敗しました: ${_describeSaveError(error)}')),
+        );
+      }
+      return false;
+    }
+  }
+
+  String _describeSaveError(Object error) {
+    if (error is FirebaseException) {
+      return '${error.code}${error.message == null ? '' : ' (${error.message})'}';
+    }
+    return error.toString();
   }
 
   bool _matchesPeriod(ExpenseItem item) {
@@ -385,7 +400,9 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
   }
 
   Future<void> _showReceiptLinesDialog(String rawText) async {
-    final draftLines = List<ReceiptLine>.from(_receiptLines);
+    final draftLines = _receiptLines.isEmpty
+        ? [const ReceiptLine(name: '', price: 0)]
+        : List<ReceiptLine>.from(_receiptLines);
     final categoryValues = List<String>.filled(draftLines.length, _selectedCategory);
     final nameControllers = draftLines.map((line) => TextEditingController(text: line.name)).toList();
     final priceControllers = draftLines.map((line) => TextEditingController(text: line.price.toStringAsFixed(2))).toList();
@@ -483,15 +500,22 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
             FilledButton(
               onPressed: () async {
                 final lines = <ReceiptLine>[];
+                final categories = <String>[];
                 for (var i = 0; i < draftLines.length; i++) {
                   final price = double.tryParse(priceControllers[i].text.trim());
                   final name = nameControllers[i].text.trim();
-                  if (name.isNotEmpty && price != null && price > 0) lines.add(ReceiptLine(name: name, price: price));
+                  if (name.isNotEmpty && price != null && price > 0) {
+                    lines.add(ReceiptLine(name: name, price: price));
+                    categories.add(categoryValues[i]);
+                  }
                 }
                 if (lines.isNotEmpty) {
                   _selectedDate = dialogDate;
                   _selectedStore = dialogStore;
-                  await _addReceiptLines(lines, categoryValues);
+                  await _addReceiptLines(lines, categories);
+                } else if (dialogContext.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('品名と正しい価格を1件以上入力してください。')));
+                  return;
                 }
                 if (dialogContext.mounted) Navigator.pop(dialogContext);
               },
