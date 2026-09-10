@@ -2,12 +2,26 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'ocr_service.dart';
+import 'firebase_options.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await Firebase.initializeApp(options: firebaseOptions);
+    FirebaseFirestore.instance.settings = const Settings(
+      persistenceEnabled: true,
+      cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+    );
+  } catch (_) {
+    // Firebase is optional at startup so the cached/local UI still opens offline.
+  }
   runApp(const MyApp());
 }
 
@@ -54,6 +68,7 @@ class MyApp extends StatelessWidget {
 
 class ExpenseItem {
   const ExpenseItem({
+    this.id,
     required this.name,
     required this.price,
     required this.category,
@@ -61,6 +76,7 @@ class ExpenseItem {
     required this.store,
   });
 
+  final String? id;
   final String name;
   final double price;
   final String category;
@@ -68,6 +84,7 @@ class ExpenseItem {
   final String store;
 
   Map<String, dynamic> toJson() => {
+      if (id != null) 'id': id,
         'name': name,
         'price': price,
         'category': category,
@@ -78,12 +95,28 @@ class ExpenseItem {
   factory ExpenseItem.fromJson(Map<String, dynamic> json) {
     return ExpenseItem(
       name: json['name'] as String,
+      id: json['id'] as String?,
       price: (json['price'] as num).toDouble(),
       category: json['category'] as String,
       date: DateTime.parse(json['date'] as String),
       store: json['store'] as String? ?? 'その他',
     );
   }
+}
+
+class ReceiptLine {
+  const ReceiptLine({required this.name, required this.price});
+
+  final String name;
+  final double price;
+}
+
+class ReceiptParseResult {
+  const ReceiptParseResult({required this.lines, this.date, this.store});
+
+  final List<ReceiptLine> lines;
+  final DateTime? date;
+  final String? store;
 }
 
 class ExpenseHomePage extends StatefulWidget {
@@ -107,8 +140,10 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
   String _selectedStore = 'その他';
   String _selectedPeriod = '今月';
   bool _isReadingReceipt = false;
+  List<ReceiptLine> _receiptLines = [];
   DateTime _selectedDate = DateTime.now();
   bool _isLoadingExpenses = true;
+  User? _firebaseUser;
   double _nzdToJpy = _fallbackNzdToJpy;
   bool _isLoadingRate = true;
 
@@ -116,7 +151,7 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
 
   List<ExpenseItem> get _visibleExpenses => _expenses.where(_matchesPeriod).toList();
 
-  double get _total => _visibleExpenses.fold(0.0, (sum, item) => sum + item.price);
+  double get _total => _visibleExpenses.fold(0.0, (total, item) => total + item.price);
 
   @override
   void initState() {
@@ -129,27 +164,60 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
     try {
       final preferences = await SharedPreferences.getInstance();
       final savedJson = preferences.getString(_expensesStorageKey);
-      final restoredExpenses = savedJson == null
+      final localExpenses = savedJson == null
           ? (preferences.getStringList(_expensesStorageKey) ?? [])
-              .map((value) => ExpenseItem.fromJson(jsonDecode(value) as Map<String, dynamic>))
+              .asMap()
+              .entries
+              .map((entry) => ExpenseItem.fromJson({
+                    ...(jsonDecode(entry.value) as Map<String, dynamic>),
+                    'id': (jsonDecode(entry.value) as Map<String, dynamic>)['id'] ?? 'legacy-${entry.key}',
+                  }))
               .toList()
           : (jsonDecode(savedJson) as List<dynamic>)
-              .map((value) => ExpenseItem.fromJson(value as Map<String, dynamic>))
+              .asMap()
+              .entries
+              .map((entry) => ExpenseItem.fromJson({
+                    ...(entry.value as Map<String, dynamic>),
+                    'id': (entry.value as Map<String, dynamic>)['id'] ?? 'legacy-${entry.key}',
+                  }))
               .toList();
       if (mounted) {
         setState(() {
           _expenses
             ..clear()
-            ..addAll(restoredExpenses);
+            ..addAll(localExpenses);
           _isLoadingExpenses = false;
         });
       }
+      await _loadFromFirestore(localExpenses);
     } catch (_) {
       if (mounted) setState(() => _isLoadingExpenses = false);
     }
   }
 
-  Future<void> saveData() async {
+  CollectionReference<Map<String, dynamic>> get _expenseCollection =>
+      FirebaseFirestore.instance.collection('users').doc(_firebaseUser!.uid).collection('expenses');
+
+  Future<void> _loadFromFirestore(List<ExpenseItem> localExpenses) async {
+    try {
+      _firebaseUser = FirebaseAuth.instance.currentUser ?? (await FirebaseAuth.instance.signInAnonymously()).user;
+      if (_firebaseUser == null) return;
+      final snapshot = await _expenseCollection.get();
+      if (snapshot.docs.isEmpty && localExpenses.isNotEmpty) {
+        await _saveToFirestore();
+      } else if (snapshot.docs.isNotEmpty && mounted) {
+        final remoteExpenses = snapshot.docs.map((doc) => ExpenseItem.fromJson({'id': doc.id, ...doc.data()})).toList();
+        setState(() {
+          _expenses
+            ..clear()
+            ..addAll(remoteExpenses);
+        });
+        await _saveLocalData();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveLocalData() async {
     final preferences = await SharedPreferences.getInstance();
     final encodedExpenses = jsonEncode(
       _expenses.map((expense) => expense.toJson()).toList(),
@@ -158,6 +226,35 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
       _expensesStorageKey,
       encodedExpenses,
     );
+  }
+
+  Future<void> _saveToFirestore() async {
+    if (_firebaseUser == null) return;
+    final batch = FirebaseFirestore.instance.batch();
+    final existing = await _expenseCollection.get();
+    final currentIds = _expenses.map((expense) => expense.id).whereType<String>().toSet();
+    for (final doc in existing.docs) {
+      if (!currentIds.contains(doc.id)) batch.delete(doc.reference);
+    }
+    for (final expense in _expenses) {
+      final id = expense.id ?? DateTime.now().microsecondsSinceEpoch.toString();
+      batch.set(_expenseCollection.doc(id), {
+        'name': expense.name,
+        'price': expense.price,
+        'category': expense.category,
+        'date': expense.date.toIso8601String(),
+        'store': expense.store,
+      });
+    }
+    await batch.commit();
+  }
+
+  Future<void> saveData() async {
+    await _saveLocalData();
+    try {
+      _firebaseUser ??= FirebaseAuth.instance.currentUser ?? (await FirebaseAuth.instance.signInAnonymously()).user;
+      await _saveToFirestore();
+    } catch (_) {}
   }
 
   bool _matchesPeriod(ExpenseItem item) {
@@ -189,11 +286,20 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
       final text = await recognizeReceiptText(bytes);
       if (!mounted) return;
       final parsed = _parseReceiptText(text ?? '');
-      if (parsed.price != null) _priceController.text = parsed.price!.toStringAsFixed(2);
-      if (parsed.name != null) _nameController.text = parsed.name!;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(parsed.hasValue ? 'レシートを解析しました。内容を確認してください。' : '文字を読み取れませんでした。手入力してください。')),
-      );
+      if (parsed.date != null) {
+        final today = DateTime.now();
+        final detectedDate = parsed.date!;
+        setState(() {
+          _selectedDate = detectedDate.isAfter(today) ? today : detectedDate;
+        });
+      }
+      if (parsed.store != null && _stores.contains(parsed.store)) _selectedStore = parsed.store!;
+      if (parsed.lines.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('明細を読み取れませんでした。手入力してください。')));
+      } else {
+        _receiptLines = parsed.lines;
+        await _showReceiptLinesDialog();
+      }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('OCRに失敗しました。手入力してください。')));
@@ -203,13 +309,188 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
     }
   }
 
-  ({String? name, double? price, bool hasValue}) _parseReceiptText(String text) {
-    final lines = text.split(RegExp(r'\r?\n')).map((line) => line.trim()).where((line) => line.isNotEmpty).toList();
-    final priceMatches = RegExp(r'(?:\$|NZD)?\s*(\d{1,4}(?:[,.]\d{2}))\b').allMatches(text);
-    final prices = priceMatches.map((match) => double.tryParse(match.group(1)!.replaceAll(',', ''))).whereType<double>().toList();
-    final price = prices.isEmpty ? null : prices.reduce((a, b) => a > b ? a : b);
-    final name = lines.firstWhere((line) => !line.toUpperCase().contains('TOTAL') && !RegExp(r'^\$?\s*\d').hasMatch(line), orElse: () => '');
-    return (name: name.isEmpty ? null : name, price: price, hasValue: name.isNotEmpty || price != null);
+  ReceiptParseResult _parseReceiptText(String text) {
+    final parsedLines = <ReceiptLine>[];
+    for (final rawLine in text.split(RegExp(r'\r?\n'))) {
+      final line = rawLine.trim().replaceAll(RegExp(r'\s+'), ' ');
+      if (line.isEmpty || _isReceiptSummaryLine(line) || _isBarcodeNoise(line)) continue;
+      final match = RegExp(r'^(.+?)\s+(?:NZD\s*)?\$?\s*([0-9OoIl]{1,5}[.,][0-9OoIl]{2})\s*$').firstMatch(line);
+      if (match == null) continue;
+      final name = match.group(1)!.replaceAll(RegExp(r'\s+'), ' ').trim();
+      final price = _parseMoney(match.group(2)!);
+      if (_looksLikeProductName(name) && price != null && price > 0 && price < 100000) {
+        parsedLines.add(ReceiptLine(name: name, price: price));
+      }
+    }
+    final date = _parseReceiptDate(text);
+    final store = _stores.firstWhere((store) => store != 'その他' && text.toLowerCase().contains(store.toLowerCase()), orElse: () => '');
+    return ReceiptParseResult(lines: parsedLines, date: date, store: store.isEmpty ? null : store);
+  }
+
+  bool _isBarcodeNoise(String line) => RegExp(r'^\d{8,}$').hasMatch(line.replaceAll(RegExp(r'[^0-9]'), '')) && !line.contains(RegExp(r'[A-Za-z]'));
+
+  bool _looksLikeProductName(String name) {
+    if (name.length < 2 || RegExp(r'^\d+$').hasMatch(name.replaceAll(RegExp(r'[^0-9]'), ''))) return false;
+    return RegExp(r'[A-Za-z]').hasMatch(name) || RegExp(r'[ぁ-んァ-ン一-龯]').hasMatch(name);
+  }
+
+  bool _isReceiptSummaryLine(String line) {
+    return RegExp(r'\b(total|subtotal|tax|gst|change|cash|visa|mastercard|eftpos|amount|合計|小計|税)\b', caseSensitive: false).hasMatch(line);
+  }
+
+  double? _parseMoney(String value) {
+    final normalized = value.replaceAll(RegExp('[Oo]'), '0').replaceAll(RegExp('[Il]'), '1').replaceAll(',', '.');
+    return double.tryParse(normalized);
+  }
+
+  DateTime? _parseReceiptDate(String text) {
+    final numeric = RegExp(r'\b(20\d{2})[./-](\d{1,2})[./-](\d{1,2})\b').firstMatch(text);
+    if (numeric != null) {
+      return _validDate(int.parse(numeric.group(1)!), int.parse(numeric.group(2)!), int.parse(numeric.group(3)!));
+    }
+    final dayFirstLong = RegExp(r'\b(\d{1,2})[./-](\d{1,2})[./-](20\d{2})\b').firstMatch(text);
+    if (dayFirstLong != null) {
+      return _validDate(int.parse(dayFirstLong.group(3)!), int.parse(dayFirstLong.group(2)!), int.parse(dayFirstLong.group(1)!));
+    }
+    final dayFirst = RegExp(r'\b(\d{1,2})[./-](\d{1,2})[./-](\d{2})\b').firstMatch(text);
+    if (dayFirst != null) {
+      return _validDate(2000 + int.parse(dayFirst.group(3)!), int.parse(dayFirst.group(2)!), int.parse(dayFirst.group(1)!));
+    }
+    final written = RegExp(r'\b(\d{1,2})\s+(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+(20\d{2})\b', caseSensitive: false).firstMatch(text);
+    if (written == null) return null;
+    const months = {'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6, 'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12};
+    final month = months[written.group(2)!.substring(0, 3).toLowerCase()];
+    return month == null ? null : _validDate(int.parse(written.group(3)!), month, int.parse(written.group(1)!));
+  }
+
+  DateTime? _validDate(int year, int month, int day) {
+    final date = DateTime(year, month, day);
+    return date.year == year && date.month == month && date.day == day ? date : null;
+  }
+
+  Future<void> _showReceiptLinesDialog() async {
+    final selected = List<bool>.filled(_receiptLines.length, true);
+    final nameControllers = _receiptLines.map((line) => TextEditingController(text: line.name)).toList();
+    final priceControllers = _receiptLines.map((line) => TextEditingController(text: line.price.toStringAsFixed(2))).toList();
+    var dialogDate = _selectedDate;
+    var dialogStore = _selectedStore;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('読み取り結果を確認・編集'),
+          content: SizedBox(
+            width: 520,
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.calendar_today_outlined),
+                    title: const Text('購入日'),
+                    subtitle: Text(_formatDate(dialogDate)),
+                    onTap: () async {
+                      final picked = await showDatePicker(context: context, initialDate: dialogDate, firstDate: DateTime(2020), lastDate: DateTime.now());
+                      if (picked != null) setDialogState(() => dialogDate = picked);
+                    },
+                  ),
+                  DropdownButtonFormField<String>(
+                    value: dialogStore,
+                    decoration: const InputDecoration(labelText: '購入店舗'),
+                    items: _stores.map((store) => DropdownMenuItem(value: store, child: Text(store))).toList(),
+                    onChanged: (value) => setDialogState(() => dialogStore = value!),
+                  ),
+                  const SizedBox(height: 12),
+                  for (var index = 0; index < _receiptLines.length; index++)
+                    Row(
+                      children: [
+                        Checkbox(value: selected[index], onChanged: (value) => setDialogState(() => selected[index] = value ?? false)),
+                        Expanded(child: TextFormField(controller: nameControllers[index], decoration: const InputDecoration(labelText: '品目'))),
+                        const SizedBox(width: 8),
+                        SizedBox(width: 105, child: TextFormField(controller: priceControllers[index], keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: '価格'))),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('キャンセル')),
+            FilledButton(
+              onPressed: () async {
+                final lines = <ReceiptLine>[];
+                for (var i = 0; i < _receiptLines.length; i++) {
+                  final price = double.tryParse(priceControllers[i].text.trim());
+                  final name = nameControllers[i].text.trim();
+                  if (selected[i] && name.isNotEmpty && price != null && price > 0) lines.add(ReceiptLine(name: name, price: price));
+                }
+                if (lines.isNotEmpty) {
+                  _selectedDate = dialogDate;
+                  _selectedStore = dialogStore;
+                  await _addReceiptLines(lines);
+                }
+                if (dialogContext.mounted) Navigator.pop(dialogContext);
+              },
+              child: const Text('確定して登録'),
+            ),
+          ],
+        ),
+      ),
+    );
+    for (final controller in [...nameControllers, ...priceControllers]) {
+      controller.dispose();
+    }
+  }
+
+  Future<void> _showEditDialog(int index) async {
+    final expense = _expenses[index];
+    final nameController = TextEditingController(text: expense.name);
+    final priceController = TextEditingController(text: expense.price.toStringAsFixed(2));
+    var date = expense.date;
+    var category = expense.category;
+    var store = expense.store;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('支出を編集'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: nameController, decoration: const InputDecoration(labelText: '品目名')),
+                TextField(controller: priceController, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: '価格（NZD）')),
+                DropdownButtonFormField<String>(value: category, decoration: const InputDecoration(labelText: 'カテゴリ'), items: _categories.map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(), onChanged: (value) => setDialogState(() => category = value!)),
+                DropdownButtonFormField<String>(value: store, decoration: const InputDecoration(labelText: '購入店舗'), items: _stores.map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(), onChanged: (value) => setDialogState(() => store = value!)),
+                ListTile(contentPadding: EdgeInsets.zero, title: const Text('購入日'), subtitle: Text(_formatDate(date)), onTap: () async { final picked = await showDatePicker(context: context, initialDate: date, firstDate: DateTime(2020), lastDate: DateTime.now()); if (picked != null) setDialogState(() => date = picked); }),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('キャンセル')),
+            FilledButton(
+              onPressed: () async {
+                final price = double.tryParse(priceController.text.trim());
+                if (nameController.text.trim().isEmpty || price == null || price <= 0) return;
+                await updateExpense(index, ExpenseItem(id: expense.id, name: nameController.text.trim(), price: price, category: category, date: date, store: store));
+                if (dialogContext.mounted) Navigator.pop(dialogContext);
+              },
+              child: const Text('保存'),
+            ),
+          ],
+        ),
+      ),
+    );
+    nameController.dispose();
+    priceController.dispose();
+  }
+
+  Future<void> _addReceiptLines(List<ReceiptLine> lines) async {
+    setState(() {
+      _expenses.insertAll(0, lines.map((line) => ExpenseItem(name: line.name, price: line.price, category: _selectedCategory, date: _selectedDate, store: _selectedStore)));
+      _receiptLines = [];
+    });
+    await saveData();
   }
 
   Future<void> _selectDate() async {
@@ -263,6 +544,7 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
       _expenses.insert(
         0,
         ExpenseItem(
+          id: DateTime.now().microsecondsSinceEpoch.toString(),
           name: _nameController.text.trim(),
           price: double.parse(_priceController.text.trim()),
           category: _selectedCategory,
@@ -274,6 +556,11 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
       _priceController.clear();
       _selectedDate = DateTime.now();
     });
+    await saveData();
+  }
+
+  Future<void> updateExpense(int index, ExpenseItem updatedExpense) async {
+    setState(() => _expenses[index] = updatedExpense);
     await saveData();
   }
 
@@ -388,7 +675,7 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
     for (final category in _categories) {
       categoryTotals[category] = monthlyExpenses
           .where((item) => item.category == category)
-          .fold(0.0, (sum, item) => sum + item.price);
+          .fold(0.0, (total, item) => total + item.price);
     }
 
     return Card(
@@ -612,6 +899,11 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
                       style: const TextStyle(color: Color(0xff52706a), fontSize: 12),
                     ),
                   ],
+                ),
+                IconButton(
+                  tooltip: '編集',
+                  icon: const Icon(Icons.edit_outlined),
+                  onPressed: () => _showEditDialog(index),
                 ),
                 IconButton(
                   tooltip: '削除',
