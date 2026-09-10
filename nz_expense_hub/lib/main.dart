@@ -112,9 +112,10 @@ class ReceiptLine {
 }
 
 class ReceiptParseResult {
-  const ReceiptParseResult({required this.lines, this.date, this.store});
+  const ReceiptParseResult({required this.lines, required this.rawText, this.date, this.store});
 
   final List<ReceiptLine> lines;
+  final String rawText;
   final DateTime? date;
   final String? store;
 }
@@ -285,7 +286,7 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
     try {
       final text = await recognizeReceiptText(bytes);
       if (!mounted) return;
-      final parsed = _parseReceiptText(text ?? '');
+      final parsed = _parseReceiptText(text ?? '', _selectedStore);
       if (parsed.date != null) {
         final today = DateTime.now();
         final detectedDate = parsed.date!;
@@ -293,13 +294,8 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
           _selectedDate = detectedDate.isAfter(today) ? today : detectedDate;
         });
       }
-      if (parsed.store != null && _stores.contains(parsed.store)) _selectedStore = parsed.store!;
-      if (parsed.lines.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('明細を読み取れませんでした。手入力してください。')));
-      } else {
-        _receiptLines = parsed.lines;
-        await _showReceiptLinesDialog();
-      }
+      _receiptLines = parsed.lines;
+      await _showReceiptLinesDialog(parsed.rawText);
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('OCRに失敗しました。手入力してください。')));
@@ -309,22 +305,42 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
     }
   }
 
-  ReceiptParseResult _parseReceiptText(String text) {
+  ReceiptParseResult _parseReceiptText(String text, String store) {
     final parsedLines = <ReceiptLine>[];
+    final parser = store == 'Woolworths' ? _parseWoolworthsLine : store == 'その他' ? _parseGenericLine : _parsePakOrNewWorldLine;
     for (final rawLine in text.split(RegExp(r'\r?\n'))) {
       final line = rawLine.trim().replaceAll(RegExp(r'\s+'), ' ');
-      if (line.isEmpty || _isReceiptSummaryLine(line) || _isBarcodeNoise(line)) continue;
-      final match = RegExp(r'^(.+?)\s+(?:NZD\s*)?\$?\s*([0-9OoIl]{1,5}[.,][0-9OoIl]{2})\s*$').firstMatch(line);
-      if (match == null) continue;
-      final name = match.group(1)!.replaceAll(RegExp(r'\s+'), ' ').trim();
-      final price = _parseMoney(match.group(2)!);
-      if (_looksLikeProductName(name) && price != null && price > 0 && price < 100000) {
-        parsedLines.add(ReceiptLine(name: name, price: price));
-      }
+      final parsedLine = parser(line);
+      if (parsedLine != null) parsedLines.add(parsedLine);
     }
     final date = _parseReceiptDate(text);
-    final store = _stores.firstWhere((store) => store != 'その他' && text.toLowerCase().contains(store.toLowerCase()), orElse: () => '');
-    return ReceiptParseResult(lines: parsedLines, date: date, store: store.isEmpty ? null : store);
+    return ReceiptParseResult(lines: parsedLines, date: date, store: store, rawText: text);
+  }
+
+  ReceiptLine? _parsePakOrNewWorldLine(String line) {
+    if (line.isEmpty || _isReceiptSummaryLine(line) || _isBarcodeNoise(line)) return null;
+    return _parseProductPricePair(line, requireEnglishName: true);
+  }
+
+  ReceiptLine? _parseWoolworthsLine(String line) {
+    if (line.isEmpty || _isReceiptSummaryLine(line) || _isBarcodeNoise(line)) return null;
+    if (RegExp(r'\b(discount|saving|clubcard|special|promo|offer|rewards)\b', caseSensitive: false).hasMatch(line) || line.contains('-')) return null;
+    return _parseProductPricePair(line, requireEnglishName: false);
+  }
+
+  ReceiptLine? _parseGenericLine(String line) {
+    if (line.isEmpty || _isReceiptSummaryLine(line) || _isBarcodeNoise(line)) return null;
+    return _parseProductPricePair(line, requireEnglishName: false);
+  }
+
+  ReceiptLine? _parseProductPricePair(String line, {required bool requireEnglishName}) {
+    final match = RegExp(r'^(.+?)\s+(?:NZD\s*)?\$?\s*([0-9OoIl]{1,5}(?:[.,][0-9OoIl]{2})?)\s*$').firstMatch(line);
+    if (match == null) return null;
+    final name = match.group(1)!.replaceAll(RegExp(r'\s+'), ' ').trim();
+    final price = _parseMoney(match.group(2)!);
+    if (price == null || price <= 0 || price >= 100000 || !_looksLikeProductName(name)) return null;
+    if (requireEnglishName && !RegExp(r'[A-Za-z]').hasMatch(name)) return null;
+    return ReceiptLine(name: name, price: price);
   }
 
   bool _isBarcodeNoise(String line) => RegExp(r'^\d{8,}$').hasMatch(line.replaceAll(RegExp(r'[^0-9]'), '')) && !line.contains(RegExp(r'[A-Za-z]'));
@@ -368,22 +384,36 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
     return date.year == year && date.month == month && date.day == day ? date : null;
   }
 
-  Future<void> _showReceiptLinesDialog() async {
-    final selected = List<bool>.filled(_receiptLines.length, true);
-    final nameControllers = _receiptLines.map((line) => TextEditingController(text: line.name)).toList();
-    final priceControllers = _receiptLines.map((line) => TextEditingController(text: line.price.toStringAsFixed(2))).toList();
+  Future<void> _showReceiptLinesDialog(String rawText) async {
+    final draftLines = List<ReceiptLine>.from(_receiptLines);
+    final selected = List<bool>.filled(draftLines.length, true);
+    final nameControllers = draftLines.map((line) => TextEditingController(text: line.name)).toList();
+    final priceControllers = draftLines.map((line) => TextEditingController(text: line.price.toStringAsFixed(2))).toList();
+    final rawTextController = TextEditingController(text: rawText);
     var dialogDate = _selectedDate;
     var dialogStore = _selectedStore;
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
+    try {
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('読み取り結果を確認・編集'),
+          title: const Text('読み取り結果を確認・修正'),
           content: SizedBox(
             width: 520,
             child: SingleChildScrollView(
               child: Column(
                 children: [
+                  TextField(
+                    controller: rawTextController,
+                    minLines: 3,
+                    maxLines: 7,
+                    decoration: const InputDecoration(
+                      labelText: 'OCR生テキスト（参考・編集可）',
+                      helperText: '読み取れなかった品目や価格はここから確認して入力できます',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.calendar_today_outlined),
@@ -401,15 +431,40 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
                     onChanged: (value) => setDialogState(() => dialogStore = value!),
                   ),
                   const SizedBox(height: 12),
-                  for (var index = 0; index < _receiptLines.length; index++)
+                  for (var index = 0; index < draftLines.length; index++)
                     Row(
                       children: [
                         Checkbox(value: selected[index], onChanged: (value) => setDialogState(() => selected[index] = value ?? false)),
                         Expanded(child: TextFormField(controller: nameControllers[index], decoration: const InputDecoration(labelText: '品目'))),
                         const SizedBox(width: 8),
                         SizedBox(width: 105, child: TextFormField(controller: priceControllers[index], keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: '価格'))),
+                        IconButton(
+                          tooltip: '明細を削除',
+                          icon: const Icon(Icons.remove_circle_outline),
+                          onPressed: () => setDialogState(() {
+                            nameControllers[index].dispose();
+                            priceControllers[index].dispose();
+                            nameControllers.removeAt(index);
+                            priceControllers.removeAt(index);
+                            selected.removeAt(index);
+                            draftLines.removeAt(index);
+                          }),
+                        ),
                       ],
                     ),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () => setDialogState(() {
+                        draftLines.add(const ReceiptLine(name: '', price: 0));
+                        selected.add(true);
+                        nameControllers.add(TextEditingController());
+                        priceControllers.add(TextEditingController());
+                      }),
+                      icon: const Icon(Icons.add),
+                      label: const Text('明細を追加'),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -419,7 +474,7 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
             FilledButton(
               onPressed: () async {
                 final lines = <ReceiptLine>[];
-                for (var i = 0; i < _receiptLines.length; i++) {
+                for (var i = 0; i < draftLines.length; i++) {
                   final price = double.tryParse(priceControllers[i].text.trim());
                   final name = nameControllers[i].text.trim();
                   if (selected[i] && name.isNotEmpty && price != null && price > 0) lines.add(ReceiptLine(name: name, price: price));
@@ -435,10 +490,13 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
             ),
           ],
         ),
-      ),
-    );
-    for (final controller in [...nameControllers, ...priceControllers]) {
-      controller.dispose();
+        ),
+      );
+    } finally {
+      rawTextController.dispose();
+      for (final controller in [...nameControllers, ...priceControllers]) {
+        controller.dispose();
+      }
     }
   }
 
