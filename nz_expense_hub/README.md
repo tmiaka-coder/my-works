@@ -1,6 +1,17 @@
-# flutter_application_1
+# NZ Expense Hub
 
-A new Flutter project.
+ニュージーランドの生活費を記録する Flutter Web アプリです。
+
+## Firebase API キー
+
+Firebase Web の API キーはソースコードに固定せず、ビルド時に渡します。
+
+```bash
+flutter run -d chrome --dart-define=FIREBASE_API_KEY="$FIREBASE_API_KEY"
+flutter build web --release --dart-define=FIREBASE_API_KEY="$FIREBASE_API_KEY"
+```
+
+Web API キーは完全な秘密ではありませんが、Google Cloud Console で HTTP リファラーを公開ドメインに制限し、不要な API を無効化してください。Firestore のデータ保護は API キーではなく、認証と `firestore.rules` で行います。
 
 ## Getting Started
 

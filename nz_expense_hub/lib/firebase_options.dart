@@ -1,7 +1,7 @@
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 
 const firebaseOptions = FirebaseOptions(
-  apiKey: 'AIzaSyDWJtjavDsO_V_CzA2_8zCxD79eMc_--zY',
+  apiKey: String.fromEnvironment('FIREBASE_API_KEY'),
   appId: '1:1064667692743:web:01a0d4fb307ce39f6048e2',
   messagingSenderId: '1064667692743',
   projectId: 'nztripapp-99050',
