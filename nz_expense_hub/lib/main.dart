@@ -251,18 +251,22 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
   }
 
   Future<bool> saveData() async {
+    var localSaved = false;
     try {
       await _saveLocalData();
+      localSaved = true;
       _firebaseUser ??= FirebaseAuth.instance.currentUser ?? (await FirebaseAuth.instance.signInAnonymously()).user;
       await _saveToFirestore();
       return true;
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('保存に失敗しました: ${_describeSaveError(error)}')),
+          SnackBar(content: Text(localSaved
+              ? '端末には保存しましたが、Firestore同期に失敗しました: ${_describeSaveError(error)}'
+              : '保存に失敗しました: ${_describeSaveError(error)}')),
         );
       }
-      return false;
+      return localSaved;
     }
   }
 
@@ -323,10 +327,28 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
   ReceiptParseResult _parseReceiptText(String text, String store) {
     final parsedLines = <ReceiptLine>[];
     final parser = store == 'Woolworths' ? _parseWoolworthsLine : store == 'その他' ? _parseGenericLine : _parsePakOrNewWorldLine;
-    for (final rawLine in text.split(RegExp(r'\r?\n'))) {
-      final line = rawLine.trim().replaceAll(RegExp(r'\s+'), ' ');
+    final sourceLines = text
+        .split(RegExp(r'\r?\n'))
+        .map((rawLine) => rawLine.trim().replaceAll(RegExp(r'\s+'), ' '))
+        .where((line) => line.isNotEmpty)
+        .toList();
+    for (var index = 0; index < sourceLines.length; index++) {
+      final line = sourceLines[index];
       final parsedLine = parser(line);
-      if (parsedLine != null) parsedLines.add(parsedLine);
+      if (parsedLine != null) {
+        parsedLines.add(parsedLine);
+        continue;
+      }
+      if (_looksLikeProductName(line) && !_isReceiptSummaryLine(line) && !_isBarcodeNoise(line) && index + 1 < sourceLines.length) {
+        final nextLine = sourceLines[index + 1];
+        final nextPrice = _parseStandaloneMoney(nextLine);
+        if (nextPrice != null) {
+          if (store == 'その他' || RegExp(r'[A-Za-z]').hasMatch(line)) {
+            parsedLines.add(ReceiptLine(name: line, price: nextPrice));
+            index++;
+          }
+        }
+      }
     }
     final date = _parseReceiptDate(text);
     return ReceiptParseResult(lines: parsedLines, date: date, store: store, rawText: text);
@@ -372,6 +394,12 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
   double? _parseMoney(String value) {
     final normalized = value.replaceAll(RegExp('[Oo]'), '0').replaceAll(RegExp('[Il]'), '1').replaceAll(',', '.');
     return double.tryParse(normalized);
+  }
+
+  double? _parseStandaloneMoney(String line) {
+    if (_isReceiptSummaryLine(line) || _isBarcodeNoise(line)) return null;
+    final match = RegExp(r'^\$?\s*([0-9OoIl]{1,5}(?:[.,][0-9OoIl]{2})?)\s*(?:NZD)?$').firstMatch(line);
+    return match == null ? null : _parseMoney(match.group(1)!);
   }
 
   DateTime? _parseReceiptDate(String text) {
@@ -512,7 +540,8 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
                 if (lines.isNotEmpty) {
                   _selectedDate = dialogDate;
                   _selectedStore = dialogStore;
-                  await _addReceiptLines(lines, categories);
+                  final saved = await _addReceiptLines(lines, categories);
+                  if (!saved) return;
                 } else if (dialogContext.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('品名と正しい価格を1件以上入力してください。')));
                   return;
@@ -576,7 +605,7 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
     priceController.dispose();
   }
 
-  Future<void> _addReceiptLines(List<ReceiptLine> lines, [List<String>? categories]) async {
+  Future<bool> _addReceiptLines(List<ReceiptLine> lines, [List<String>? categories]) async {
     setState(() {
       _expenses.insertAll(0, [
         for (var index = 0; index < lines.length; index++)
@@ -591,7 +620,7 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
       ]);
       _receiptLines = [];
     });
-    await saveData();
+    return saveData();
   }
 
   Future<void> _selectDate() async {
