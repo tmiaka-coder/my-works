@@ -444,6 +444,7 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
     try {
       await showDialog<void>(
         context: context,
+        barrierDismissible: false,
         builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: const Text('読み取り結果を確認・修正'),
@@ -489,22 +490,25 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
                   ),
                   const SizedBox(height: 8),
                   for (var index = 0; index < draftLines.length; index++)
-                    Row(
-                      children: [
-                        Expanded(child: TextFormField(controller: nameControllers[index], decoration: const InputDecoration(labelText: '品目'))),
-                        const SizedBox(width: 8),
-                        SizedBox(width: 95, child: TextFormField(controller: priceControllers[index], keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: '価格'))),
-                        const SizedBox(width: 8),
-                        SizedBox(
-                          width: 115,
-                          child: DropdownButtonFormField<String>(
-                            value: categoryValues[index],
-                            decoration: const InputDecoration(labelText: 'カテゴリ'),
-                            items: _categories.map((category) => DropdownMenuItem(value: category, child: Text(category, overflow: TextOverflow.ellipsis))).toList(),
-                            onChanged: (value) => setDialogState(() => categoryValues[index] = value!),
-                          ),
-                        ),
-                        IconButton(
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final compact = constraints.maxWidth < 460;
+                        final nameField = TextFormField(
+                          controller: nameControllers[index],
+                          decoration: const InputDecoration(labelText: '品目'),
+                        );
+                        final priceField = TextFormField(
+                          controller: priceControllers[index],
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: const InputDecoration(labelText: '価格（NZD）'),
+                        );
+                        final categoryField = DropdownButtonFormField<String>(
+                          value: categoryValues[index],
+                          decoration: const InputDecoration(labelText: 'カテゴリ'),
+                          items: _categories.map((category) => DropdownMenuItem(value: category, child: Text(category, overflow: TextOverflow.ellipsis))).toList(),
+                          onChanged: (value) => setDialogState(() => categoryValues[index] = value!),
+                        );
+                        final deleteButton = IconButton(
                           tooltip: '明細を削除',
                           icon: const Icon(Icons.remove_circle_outline),
                           onPressed: () => setDialogState(() {
@@ -515,8 +519,28 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
                             categoryValues.removeAt(index);
                             draftLines.removeAt(index);
                           }),
-                        ),
-                      ],
+                        );
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: compact
+                              ? Column(
+                                  children: [
+                                    nameField,
+                                    Row(children: [Expanded(child: priceField), const SizedBox(width: 8), Expanded(child: categoryField), deleteButton]),
+                                  ],
+                                )
+                              : Row(
+                                  children: [
+                                    Expanded(child: nameField),
+                                    const SizedBox(width: 8),
+                                    SizedBox(width: 105, child: priceField),
+                                    const SizedBox(width: 8),
+                                    SizedBox(width: 120, child: categoryField),
+                                    deleteButton,
+                                  ],
+                                ),
+                        );
+                      },
                     ),
                   Align(
                     alignment: Alignment.centerLeft,
