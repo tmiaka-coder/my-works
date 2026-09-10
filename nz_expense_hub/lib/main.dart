@@ -386,7 +386,7 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
 
   Future<void> _showReceiptLinesDialog(String rawText) async {
     final draftLines = List<ReceiptLine>.from(_receiptLines);
-    final selected = List<bool>.filled(draftLines.length, true);
+    final categoryValues = List<String>.filled(draftLines.length, _selectedCategory);
     final nameControllers = draftLines.map((line) => TextEditingController(text: line.name)).toList();
     final priceControllers = draftLines.map((line) => TextEditingController(text: line.price.toStringAsFixed(2))).toList();
     final rawTextController = TextEditingController(text: rawText);
@@ -434,10 +434,19 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
                   for (var index = 0; index < draftLines.length; index++)
                     Row(
                       children: [
-                        Checkbox(value: selected[index], onChanged: (value) => setDialogState(() => selected[index] = value ?? false)),
                         Expanded(child: TextFormField(controller: nameControllers[index], decoration: const InputDecoration(labelText: '品目'))),
                         const SizedBox(width: 8),
-                        SizedBox(width: 105, child: TextFormField(controller: priceControllers[index], keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: '価格'))),
+                        SizedBox(width: 95, child: TextFormField(controller: priceControllers[index], keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: '価格'))),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          width: 115,
+                          child: DropdownButtonFormField<String>(
+                            value: categoryValues[index],
+                            decoration: const InputDecoration(labelText: 'カテゴリ'),
+                            items: _categories.map((category) => DropdownMenuItem(value: category, child: Text(category, overflow: TextOverflow.ellipsis))).toList(),
+                            onChanged: (value) => setDialogState(() => categoryValues[index] = value!),
+                          ),
+                        ),
                         IconButton(
                           tooltip: '明細を削除',
                           icon: const Icon(Icons.remove_circle_outline),
@@ -446,7 +455,7 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
                             priceControllers[index].dispose();
                             nameControllers.removeAt(index);
                             priceControllers.removeAt(index);
-                            selected.removeAt(index);
+                            categoryValues.removeAt(index);
                             draftLines.removeAt(index);
                           }),
                         ),
@@ -457,7 +466,7 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
                     child: TextButton.icon(
                       onPressed: () => setDialogState(() {
                         draftLines.add(const ReceiptLine(name: '', price: 0));
-                        selected.add(true);
+                        categoryValues.add(_selectedCategory);
                         nameControllers.add(TextEditingController());
                         priceControllers.add(TextEditingController());
                       }),
@@ -477,12 +486,12 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
                 for (var i = 0; i < draftLines.length; i++) {
                   final price = double.tryParse(priceControllers[i].text.trim());
                   final name = nameControllers[i].text.trim();
-                  if (selected[i] && name.isNotEmpty && price != null && price > 0) lines.add(ReceiptLine(name: name, price: price));
+                  if (name.isNotEmpty && price != null && price > 0) lines.add(ReceiptLine(name: name, price: price));
                 }
                 if (lines.isNotEmpty) {
                   _selectedDate = dialogDate;
                   _selectedStore = dialogStore;
-                  await _addReceiptLines(lines);
+                  await _addReceiptLines(lines, categoryValues);
                 }
                 if (dialogContext.mounted) Navigator.pop(dialogContext);
               },
@@ -543,9 +552,19 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
     priceController.dispose();
   }
 
-  Future<void> _addReceiptLines(List<ReceiptLine> lines) async {
+  Future<void> _addReceiptLines(List<ReceiptLine> lines, [List<String>? categories]) async {
     setState(() {
-      _expenses.insertAll(0, lines.map((line) => ExpenseItem(name: line.name, price: line.price, category: _selectedCategory, date: _selectedDate, store: _selectedStore)));
+      _expenses.insertAll(0, [
+        for (var index = 0; index < lines.length; index++)
+          ExpenseItem(
+            id: DateTime.now().microsecondsSinceEpoch.toString() + index.toString(),
+            name: lines[index].name,
+            price: lines[index].price,
+            category: categories != null && index < categories.length ? categories[index] : _selectedCategory,
+            date: _selectedDate,
+            store: _selectedStore,
+          ),
+      ]);
       _receiptLines = [];
     });
     await saveData();
