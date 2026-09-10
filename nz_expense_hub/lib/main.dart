@@ -383,7 +383,11 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
   bool _isBarcodeNoise(String line) => RegExp(r'^\d{8,}$').hasMatch(line.replaceAll(RegExp(r'[^0-9]'), '')) && !line.contains(RegExp(r'[A-Za-z]'));
 
   bool _looksLikeProductName(String name) {
-    if (name.length < 2 || RegExp(r'^\d+$').hasMatch(name.replaceAll(RegExp(r'[^0-9]'), ''))) return false;
+    if (name.length < 2 ||
+        RegExp(r'^\d+$').hasMatch(name.replaceAll(RegExp(r'[^0-9]'), '')) ||
+        RegExp(r'\d{8,}').hasMatch(name.replaceAll(RegExp(r'[^0-9]'), ''))) {
+      return false;
+    }
     return RegExp(r'[A-Za-z]').hasMatch(name) || RegExp(r'[ぁ-んァ-ン一-龯]').hasMatch(name);
   }
 
@@ -476,6 +480,14 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
                     onChanged: (value) => setDialogState(() => dialogStore = value!),
                   ),
                   const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      '検出した明細: ${draftLines.length}件',
+                      style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xff52706a)),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   for (var index = 0; index < draftLines.length; index++)
                     Row(
                       children: [
@@ -508,7 +520,7 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
                     ),
                   Align(
                     alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
+                    child: OutlinedButton.icon(
                       onPressed: () => setDialogState(() {
                         draftLines.add(const ReceiptLine(name: '', price: 0));
                         categoryValues.add(_selectedCategory);
@@ -516,7 +528,7 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
                         priceControllers.add(TextEditingController());
                       }),
                       icon: const Icon(Icons.add),
-                      label: const Text('明細を追加'),
+                      label: const Text('品目を追加'),
                     ),
                   ),
                 ],
@@ -542,6 +554,11 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
                   _selectedStore = dialogStore;
                   final saved = await _addReceiptLines(lines, categories);
                   if (!saved) return;
+                  if (mounted) {
+                    ScaffoldMessenger.of(this.context).showSnackBar(
+                      SnackBar(content: Text('${lines.length}件の支出を登録しました。')),
+                    );
+                  }
                 } else if (dialogContext.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('品名と正しい価格を1件以上入力してください。')));
                   return;
