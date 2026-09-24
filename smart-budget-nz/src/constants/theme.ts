@@ -11,6 +11,13 @@ export const COLORS = {
   // Partner Identification Accent Badges
   user1: '#111827', // Black / Dark Gray
   user2: '#4B5563', // Slate Gray
+
+  // Muted Category Colors for Analytics
+  categoryFood: '#3B82F6',      // Slate Blue
+  categoryHousing: '#10B981',   // Emerald Gray
+  categoryTransport: '#F59E0B', // Muted Amber
+  categoryDaily: '#8B5CF6',     // Soft Violet
+  categoryOther: '#9CA3AF',     // Cool Gray
 } as const;
 
 export const SPACING = {

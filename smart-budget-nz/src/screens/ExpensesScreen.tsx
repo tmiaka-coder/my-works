@@ -1,15 +1,37 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { MOCK_TRANSACTIONS } from '../mocks/mockTransactions';
 import { MAIN_CATEGORIES } from '../../types';
 import { COLORS, SPACING } from '../constants/theme';
 
-export const ExpensesScreen = () => {
-  const totalNZD = MOCK_TRANSACTIONS.reduce((sum, tx) => sum + tx.totalAmount, 0);
+const CATEGORY_COLORS: Record<string, string> = {
+  cat_food: COLORS.categoryFood,
+  cat_housing: COLORS.categoryHousing,
+  cat_transport: COLORS.categoryTransport,
+  cat_daily: COLORS.categoryDaily,
+  cat_other: COLORS.categoryOther,
+};
 
-  // カテゴリごとの集計
+export const ExpensesScreen = () => {
+  const [selectedMonth, setSelectedMonth] = useState('2026-09');
+
+  const changeMonth = (delta: number) => {
+    const [year, month] = selectedMonth.split('-').map(Number);
+    const date = new Date(year, month - 1 + delta, 1);
+    const newY = date.getFullYear();
+    const newM = String(date.getMonth() + 1).padStart(2, '0');
+    setSelectedMonth(`${newY}-${newM}`);
+  };
+
+  const filteredTransactions = MOCK_TRANSACTIONS.filter((tx) =>
+    tx.purchaseDate.startsWith(selectedMonth)
+  );
+
+  const totalNZD = filteredTransactions.reduce((sum, tx) => sum + tx.totalAmount, 0);
+
+  // カテゴリ別の集計
   const categoryTotals: Record<string, number> = {};
-  MOCK_TRANSACTIONS.forEach((tx) => {
+  filteredTransactions.forEach((tx) => {
     tx.items.forEach((item) => {
       const catId = item.mainCategoryId;
       categoryTotals[catId] = (categoryTotals[catId] || 0) + item.price * item.quantity;
@@ -18,24 +40,87 @@ export const ExpensesScreen = () => {
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.headerTitle}>Expense Analytics</Text>
+      {/* Month Selector */}
+      <View style={styles.monthSelector}>
+        <TouchableOpacity onPress={() => changeMonth(-1)} style={styles.monthNavBtn}>
+          <Text style={styles.monthNavText}>‹</Text>
+        </TouchableOpacity>
+        <Text style={styles.monthTitle}>{selectedMonth}</Text>
+        <TouchableOpacity onPress={() => changeMonth(1)} style={styles.monthNavBtn}>
+          <Text style={styles.monthNavText}>›</Text>
+        </TouchableOpacity>
+      </View>
 
-      {/* カテゴリ別 breakdown */}
+      {/* 1. Overall Category Breakdown Bar */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>By Category</Text>
-        {Object.entries(MAIN_CATEGORIES).map(([key, cat]) => {
+        <Text style={styles.cardTitle}>Monthly Breakdown ({selectedMonth})</Text>
+        <View style={styles.multiProgressBar}>
+          {Object.values(MAIN_CATEGORIES).map((cat) => {
+            const amount = categoryTotals[cat.id] || 0;
+            const percentage = totalNZD > 0 ? (amount / totalNZD) * 100 : 0;
+            if (percentage === 0) return null;
+
+            return (
+              <View
+                key={cat.id}
+                style={[
+                  styles.progressSegment,
+                  {
+                    width: `${percentage}%`,
+                    backgroundColor: CATEGORY_COLORS[cat.id] || COLORS.categoryOther,
+                  },
+                ]}
+              />
+            );
+          })}
+        </View>
+
+        <View style={styles.legendGrid}>
+          {Object.values(MAIN_CATEGORIES).map((cat) => {
+            const amount = categoryTotals[cat.id] || 0;
+            const percentage = totalNZD > 0 ? Math.round((amount / totalNZD) * 100) : 0;
+            const color = CATEGORY_COLORS[cat.id] || COLORS.categoryOther;
+
+            return (
+              <View key={cat.id} style={styles.legendItem}>
+                <View style={[styles.colorDot, { backgroundColor: color }]} />
+                <Text style={styles.legendLabel}>
+                  {cat.label}: {percentage}%
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      </View>
+
+      {/* 2. Itemized Category List (All Categories included) */}
+      <View style={[styles.card, { marginTop: SPACING.md }]}>
+        <Text style={styles.cardTitle}>Category Details</Text>
+
+        {Object.values(MAIN_CATEGORIES).map((cat) => {
           const amount = categoryTotals[cat.id] || 0;
-          if (amount === 0) return null;
           const percentage = totalNZD > 0 ? Math.round((amount / totalNZD) * 100) : 0;
+          const color = CATEGORY_COLORS[cat.id] || COLORS.categoryOther;
 
           return (
             <View key={cat.id} style={styles.categoryRow}>
               <View style={styles.categoryInfo}>
-                <Text style={styles.categoryLabel}>{cat.label}</Text>
+                <View style={styles.labelWithDot}>
+                  <View style={[styles.colorDot, { backgroundColor: color }]} />
+                  <Text style={styles.categoryLabel}>{cat.label}</Text>
+                </View>
                 <Text style={styles.categoryAmount}>${amount.toFixed(2)}</Text>
               </View>
               <View style={styles.barTrack}>
-                <View style={[styles.barFill, { width: `${percentage}%` }]} />
+                <View
+                  style={[
+                    styles.barFill,
+                    {
+                      width: `${percentage}%`,
+                      backgroundColor: color,
+                    },
+                  ]}
+                />
               </View>
             </View>
           );
@@ -51,11 +136,30 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
     padding: SPACING.md,
   },
-  headerTitle: {
+  monthSelector: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+    backgroundColor: COLORS.surface,
+    borderRadius: 8,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  monthNavBtn: {
+    padding: SPACING.xs,
+  },
+  monthNavText: {
     fontSize: 22,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  monthTitle: {
+    fontSize: 16,
     fontWeight: '700',
     color: COLORS.textPrimary,
-    marginBottom: SPACING.md,
   },
   card: {
     backgroundColor: COLORS.surface,
@@ -65,10 +169,41 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   cardTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: COLORS.textPrimary,
     marginBottom: SPACING.md,
+  },
+  multiProgressBar: {
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: COLORS.border,
+    flexDirection: 'row',
+    overflow: 'hidden',
+    marginBottom: SPACING.md,
+  },
+  progressSegment: {
+    height: '100%',
+  },
+  legendGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.sm,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '45%',
+  },
+  colorDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  legendLabel: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
   },
   categoryRow: {
     marginBottom: SPACING.md,
@@ -76,7 +211,12 @@ const styles = StyleSheet.create({
   categoryInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: SPACING.xs,
+  },
+  labelWithDot: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   categoryLabel: {
     fontSize: 14,
@@ -95,6 +235,5 @@ const styles = StyleSheet.create({
   },
   barFill: {
     height: '100%',
-    backgroundColor: COLORS.black,
   },
 });
