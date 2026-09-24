@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
-import { MOCK_TRANSACTIONS } from '../mocks/mockTransactions';
+import { useExpenses } from '../context/ExpenseContext';
 import { COLORS, SPACING } from '../constants/theme';
 import { Transaction } from '../../types';
 
-const DEFAULT_NZD_TO_JPY = 90;
-
 export const HomeScreen = () => {
+  const { transactions, exchangeRate } = useExpenses();
   const [selectedMonth, setSelectedMonth] = useState('2026-09');
-  // 展開中のレシートIDを保持（タップで開閉）
   const [expandedTxId, setExpandedTxId] = useState<string | null>(null);
 
   // 月変更処理
@@ -20,13 +18,13 @@ export const HomeScreen = () => {
     setSelectedMonth(`${newY}-${newM}`);
   };
 
-  // 選択月のデータ抽出
-  const filteredTransactions = MOCK_TRANSACTIONS.filter((tx) =>
+  // 選択月のデータ抽出（Contextから取得したtransactionsを使用）
+  const filteredTransactions = transactions.filter((tx) =>
     tx.purchaseDate.startsWith(selectedMonth)
   );
 
   const totalNZD = filteredTransactions.reduce((sum, tx) => sum + tx.totalAmount, 0);
-  const totalJPY = Math.round(totalNZD * DEFAULT_NZD_TO_JPY);
+  const totalJPY = Math.round(totalNZD * exchangeRate);
 
   const user1Total = filteredTransactions
     .filter((tx) => tx.paidByUserId === 'user_01')
@@ -71,7 +69,7 @@ export const HomeScreen = () => {
               <Text style={styles.arrowIcon}>{isExpanded ? ' ▲' : ' ▼'}</Text>
             </View>
             <Text style={styles.txAmountJPY}>
-              ≈ ¥{Math.round(item.totalAmount * DEFAULT_NZD_TO_JPY).toLocaleString()}
+              ≈ ¥{Math.round(item.totalAmount * exchangeRate).toLocaleString()}
             </Text>
           </View>
         </TouchableOpacity>
@@ -115,7 +113,7 @@ export const HomeScreen = () => {
         <Text style={styles.summaryNZD}>${totalNZD.toFixed(2)}</Text>
         <View style={styles.jpyRow}>
           <Text style={styles.summaryJPY}>≈ ¥{totalJPY.toLocaleString()}</Text>
-          <Text style={styles.rateTag}>@ ¥{DEFAULT_NZD_TO_JPY} / NZD</Text>
+          <Text style={styles.rateTag}>@ ¥{exchangeRate} / NZD</Text>
         </View>
 
         {/* Payer Ratio Bar */}

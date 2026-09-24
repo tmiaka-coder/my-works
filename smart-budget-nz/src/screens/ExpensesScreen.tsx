@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { MOCK_TRANSACTIONS } from '../mocks/mockTransactions';
+import { useExpenses } from '../context/ExpenseContext';
 import { MAIN_CATEGORIES } from '../../types';
 import { COLORS, SPACING } from '../constants/theme';
 
@@ -13,6 +13,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export const ExpensesScreen = () => {
+  const { transactions } = useExpenses();
   const [selectedMonth, setSelectedMonth] = useState('2026-09');
 
   const changeMonth = (delta: number) => {
@@ -23,7 +24,7 @@ export const ExpensesScreen = () => {
     setSelectedMonth(`${newY}-${newM}`);
   };
 
-  const filteredTransactions = MOCK_TRANSACTIONS.filter((tx) =>
+  const filteredTransactions = transactions.filter((tx) =>
     tx.purchaseDate.startsWith(selectedMonth)
   );
 
