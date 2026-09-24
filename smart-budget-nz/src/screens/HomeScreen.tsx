@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { MOCK_TRANSACTIONS } from '../mocks/mockTransactions';
 import { COLORS, SPACING } from '../constants/theme';
 import { Transaction } from '../../types';
@@ -8,7 +8,8 @@ const DEFAULT_NZD_TO_JPY = 90;
 
 export const HomeScreen = () => {
   const [selectedMonth, setSelectedMonth] = useState('2026-09');
-  const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
+  // 展開中のレシートIDを保持（タップで開閉）
+  const [expandedTxId, setExpandedTxId] = useState<string | null>(null);
 
   // 月変更処理
   const changeMonth = (delta: number) => {
@@ -33,37 +34,65 @@ export const HomeScreen = () => {
   const user1Ratio = totalNZD > 0 ? Math.round((user1Total / totalNZD) * 100) : 0;
   const user2Ratio = totalNZD > 0 ? 100 - user1Ratio : 0;
 
+  // アコーディオン開閉の切り替え
+  const toggleExpand = (id: string) => {
+    setExpandedTxId((prev) => (prev === id ? null : id));
+  };
+
   const renderTransactionItem = ({ item }: { item: Transaction }) => {
     const isUser1 = item.paidByUserId === 'user_01';
+    const isExpanded = expandedTxId === item.id;
 
     return (
-      <TouchableOpacity
-        style={styles.txCard}
-        onPress={() => setSelectedTx(item)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.txMainInfo}>
-          <View style={styles.storeHeader}>
-            <Text style={styles.storeName}>{item.storeName}</Text>
-            <View
-              style={[
-                styles.userBadge,
-                { backgroundColor: isUser1 ? COLORS.user1 : COLORS.user2 },
-              ]}
-            >
-              <Text style={styles.userBadgeText}>{isUser1 ? 'User 1' : 'User 2'}</Text>
+      <View style={styles.txCardContainer}>
+        <TouchableOpacity
+          style={styles.txCardHeader}
+          onPress={() => toggleExpand(item.id)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.txMainInfo}>
+            <View style={styles.storeHeader}>
+              <Text style={styles.storeName}>{item.storeName}</Text>
+              <View
+                style={[
+                  styles.userBadge,
+                  { backgroundColor: isUser1 ? COLORS.user1 : COLORS.user2 },
+                ]}
+              >
+                <Text style={styles.userBadgeText}>{isUser1 ? 'User 1' : 'User 2'}</Text>
+              </View>
             </View>
+            <Text style={styles.txDate}>{item.purchaseDate}</Text>
           </View>
-          <Text style={styles.txDate}>{item.purchaseDate}</Text>
-        </View>
 
-        <View style={styles.txAmountInfo}>
-          <Text style={styles.txAmountNZD}>${item.totalAmount.toFixed(2)}</Text>
-          <Text style={styles.txAmountJPY}>
-            ≈ ¥{Math.round(item.totalAmount * DEFAULT_NZD_TO_JPY).toLocaleString()}
-          </Text>
-        </View>
-      </TouchableOpacity>
+          <View style={styles.txAmountInfo}>
+            <View style={styles.amountWithArrow}>
+              <Text style={styles.txAmountNZD}>${item.totalAmount.toFixed(2)}</Text>
+              <Text style={styles.arrowIcon}>{isExpanded ? ' ▲' : ' ▼'}</Text>
+            </View>
+            <Text style={styles.txAmountJPY}>
+              ≈ ¥{Math.round(item.totalAmount * DEFAULT_NZD_TO_JPY).toLocaleString()}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* アコーディオン展開部分（商品明細） */}
+        {isExpanded && (
+          <View style={styles.expandedDetails}>
+            <Text style={styles.detailTitle}>Itemized Details</Text>
+            {item.items.map((lineItem) => (
+              <View key={lineItem.id} style={styles.detailRow}>
+                <Text style={styles.itemName} numberOfLines={1}>
+                  {lineItem.name} <Text style={styles.itemQty}>x{lineItem.quantity}</Text>
+                </Text>
+                <Text style={styles.itemPrice}>
+                  ${(lineItem.price * lineItem.quantity).toFixed(2)}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
     );
   };
 
@@ -115,43 +144,6 @@ export const HomeScreen = () => {
           <Text style={styles.emptyText}>No expenses recorded for this month.</Text>
         }
       />
-
-      {/* Detail Modal */}
-      <Modal visible={selectedTx !== null} animationType="slide" transparent={true}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>{selectedTx?.storeName}</Text>
-            <Text style={styles.modalSubTitle}>{selectedTx?.purchaseDate}</Text>
-
-            <View style={styles.detailList}>
-              {selectedTx?.items.map((item) => (
-                <View key={item.id} style={styles.detailRow}>
-                  <Text style={styles.itemName} numberOfLines={1}>
-                    {item.name} x{item.quantity}
-                  </Text>
-                  <Text style={styles.itemPrice}>
-                    ${(item.price * item.quantity).toFixed(2)}
-                  </Text>
-                </View>
-              ))}
-            </View>
-
-            <View style={styles.modalFooter}>
-              <Text style={styles.modalTotalLabel}>Total:</Text>
-              <Text style={styles.modalTotalValue}>
-                ${selectedTx?.totalAmount.toFixed(2)}
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setSelectedTx(null)}
-            >
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 };
@@ -273,17 +265,20 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: SPACING.lg,
   },
-  txCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  txCardContainer: {
     backgroundColor: COLORS.background,
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.md,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: COLORS.border,
     marginBottom: SPACING.sm,
+    overflow: 'hidden',
+  },
+  txCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
   },
   txMainInfo: {
     flex: 1,
@@ -316,49 +311,41 @@ const styles = StyleSheet.create({
   txAmountInfo: {
     alignItems: 'flex-end',
   },
+  amountWithArrow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   txAmountNZD: {
     fontSize: 15,
     fontWeight: '600',
     color: COLORS.textPrimary,
   },
+  arrowIcon: {
+    fontSize: 10,
+    color: COLORS.textSecondary,
+  },
   txAmountJPY: {
     fontSize: 11,
     color: COLORS.textSecondary,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: SPACING.md,
-  },
-  modalContent: {
-    width: '100%',
-    backgroundColor: COLORS.background,
-    borderRadius: 12,
-    padding: SPACING.md,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-  },
-  modalSubTitle: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.md,
-  },
-  detailList: {
+  expandedDetails: {
     borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: COLORS.border,
+    borderTopColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+    paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
-    marginBottom: SPACING.md,
+  },
+  detailTitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.xs,
+    textTransform: 'uppercase',
   },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 4,
+    paddingVertical: 3,
   },
   itemName: {
     fontSize: 13,
@@ -366,35 +353,13 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: SPACING.sm,
   },
+  itemQty: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+  },
   itemPrice: {
     fontSize: 13,
     fontWeight: '600',
     color: COLORS.textPrimary,
-  },
-  modalFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SPACING.md,
-  },
-  modalTotalLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-  },
-  modalTotalValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-  },
-  closeButton: {
-    backgroundColor: COLORS.black,
-    paddingVertical: SPACING.sm,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  closeButtonText: {
-    color: COLORS.white,
-    fontWeight: '600',
   },
 });
