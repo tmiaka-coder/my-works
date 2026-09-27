@@ -2,6 +2,7 @@
 
 export type MainCategoryId =
   | 'food_groceries'
+  | 'snack_beverages'
   | 'dining_out'
   | 'household'
   | 'transportation'
@@ -28,9 +29,11 @@ export interface Transaction {
   items: ExpenseItem[];
 }
 
-export const MAIN_CATEGORIES = {
+export const SNACK_BEVERAGES = 'snack_beverages';
+
+export const MAIN_CATEGORIES: Record<string, { id: MainCategoryId; label: string }> = {
   FOOD_GROCERIES: { id: 'food_groceries', label: 'Food & Groceries' },
-  SNACK_BEVERAGES: { id: 'food_groceries', label: 'Snacks & Drinks' }, // エラー防止用に追加
+  SNACK_BEVERAGES: { id: 'snack_beverages', label: 'Snacks & Drinks' },
   DINING_OUT: { id: 'dining_out', label: 'Dining Out' },
   HOUSEHOLD: { id: 'household', label: 'Household & Daily' },
   TRANSPORTATION: { id: 'transportation', label: 'Transportation' },
@@ -38,4 +41,4 @@ export const MAIN_CATEGORIES = {
   SOCIAL_GIFTS: { id: 'social_gifts', label: 'Social & Gifts' },
   FIXED_EXPENSE: { id: 'fixed_expense', label: 'Fixed Expense' },
   OTHER: { id: 'other', label: 'Other' },
-} as const;
+};

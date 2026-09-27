@@ -1,3 +1,4 @@
+// src/screens/ScanScreen.tsx
 import React, { useState } from 'react';
 import {
   View,
@@ -9,8 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { useExpenses } from '../context/ExpenseContext';
-import { MAIN_CATEGORIES, MainCategoryId } from '../../types'; // ← ../../types に変更
-import { COLORS, SPACING } from '../constants/theme';
+import { MAIN_CATEGORIES, MainCategoryId } from '../../types';
 
 export const ScanScreen = ({ navigation }: any) => {
   const { addTransaction } = useExpenses();
@@ -50,13 +50,12 @@ export const ScanScreen = ({ navigation }: any) => {
       ],
     });
 
-    // フォームリセット
     setStoreName('');
     setAmount('');
     Alert.alert('保存完了', '支出を追加しました！', [
       {
         text: 'OK',
-        onPress: () => navigation.navigate('Home'),
+        onPress: () => navigation?.navigate('Home'),
       },
     ]);
   };
@@ -65,7 +64,6 @@ export const ScanScreen = ({ navigation }: any) => {
     <ScrollView style={styles.container}>
       <Text style={styles.headerTitle}>Scan / Add Expense</Text>
 
-      {/* カメラ読み取り枠（モックUI） */}
       <TouchableOpacity style={styles.scanBox} activeOpacity={0.7}>
         <Text style={styles.scanIcon}>📷</Text>
         <Text style={styles.scanText}>Tap to Scan Receipt</Text>
@@ -74,66 +72,56 @@ export const ScanScreen = ({ navigation }: any) => {
 
       <Text style={styles.dividerText}>― MANUAL ENTRY ―</Text>
 
-      {/* 1. 店舗名 */}
       <View style={styles.formGroup}>
         <Text style={styles.label}>Store Name</Text>
         <TextInput
           style={styles.input}
           placeholder="e.g. PAK'nSAVE, New World"
-          placeholderTextColor={COLORS.textSecondary}
+          placeholderTextColor="#888"
           value={storeName}
           onChangeText={setStoreName}
         />
       </View>
 
-      {/* 2. 金額 */}
       <View style={styles.formGroup}>
         <Text style={styles.label}>Total Amount ($ NZD)</Text>
         <TextInput
           style={styles.input}
           placeholder="0.00"
-          placeholderTextColor={COLORS.textSecondary}
+          placeholderTextColor="#888"
           keyboardType="decimal-pad"
           value={amount}
           onChangeText={setAmount}
         />
       </View>
 
-      {/* 3. 支払者選択 */}
       <View style={styles.formGroup}>
         <Text style={styles.label}>Paid By</Text>
         <View style={styles.toggleRow}>
           <TouchableOpacity
-            style={[
-              styles.toggleBtn,
-              paidBy === 'user_01' && { backgroundColor: COLORS.user1 },
-            ]}
+            style={[styles.toggleBtn, paidBy === 'user_01' && styles.toggleActive]}
             onPress={() => setPaidBy('user_01')}
           >
             <Text style={[styles.toggleText, paidBy === 'user_01' && styles.toggleTextActive]}>
-              User 1 (User1)
+              User 1
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[
-              styles.toggleBtn,
-              paidBy === 'user_02' && { backgroundColor: COLORS.user2 },
-            ]}
+            style={[styles.toggleBtn, paidBy === 'user_02' && styles.toggleActive]}
             onPress={() => setPaidBy('user_02')}
           >
             <Text style={[styles.toggleText, paidBy === 'user_02' && styles.toggleTextActive]}>
-              User 2 (User2)
+              User 2
             </Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* 4. カテゴリー選択 */}
       <View style={styles.formGroup}>
         <Text style={styles.label}>Category</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catScroll}>
-          {Object.values(MAIN_CATEGORIES).map((cat) => {
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          {Object.values(MAIN_CATEGORIES || {}).map((cat) => {
             const isSelected = selectedCategory === cat.id;
             return (
               <TouchableOpacity
@@ -150,7 +138,6 @@ export const ScanScreen = ({ navigation }: any) => {
         </ScrollView>
       </View>
 
-      {/* 保存ボタン */}
       <TouchableOpacity style={styles.submitButton} onPress={handleSave} activeOpacity={0.8}>
         <Text style={styles.submitButtonText}>Save Expense</Text>
       </TouchableOpacity>
@@ -159,122 +146,64 @@ export const ScanScreen = ({ navigation }: any) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-    padding: SPACING.md,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-    marginBottom: SPACING.md,
-  },
+  container: { flex: 1, backgroundColor: '#fff', padding: 16 },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: '#111', marginBottom: 16 },
   scanBox: {
     borderWidth: 2,
-    borderColor: COLORS.black,
+    borderColor: '#000',
     borderStyle: 'dashed',
     borderRadius: 12,
-    padding: SPACING.lg,
+    padding: 24,
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.surface,
+    backgroundColor: '#fafafa',
   },
-  scanIcon: {
-    fontSize: 28,
-    marginBottom: 4,
-  },
-  scanText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-  },
-  scanSubText: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
-  dividerText: {
-    textAlign: 'center',
-    color: COLORS.textSecondary,
-    marginVertical: SPACING.md,
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  formGroup: {
-    marginBottom: SPACING.md,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-    marginBottom: SPACING.xs,
-  },
+  scanIcon: { fontSize: 28, marginBottom: 4 },
+  scanText: { fontSize: 15, fontWeight: '600', color: '#111' },
+  scanSubText: { fontSize: 11, color: '#888', marginTop: 2 },
+  dividerText: { textAlign: 'center', color: '#888', marginVertical: 16, fontSize: 11, fontWeight: '600' },
+  formGroup: { marginBottom: 16 },
+  label: { fontSize: 13, fontWeight: '600', color: '#111', marginBottom: 6 },
   input: {
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: '#ccc',
     borderRadius: 8,
-    padding: SPACING.sm,
+    padding: 12,
     fontSize: 15,
-    color: COLORS.textPrimary,
-    backgroundColor: COLORS.surface,
+    color: '#111',
+    backgroundColor: '#fff',
   },
-  toggleRow: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-  },
+  toggleRow: { flexDirection: 'row', gap: 8 },
   toggleBtn: {
     flex: 1,
-    paddingVertical: SPACING.sm,
+    paddingVertical: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: '#ccc',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
+    backgroundColor: '#fff',
   },
-  toggleText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-  },
-  toggleTextActive: {
-    color: COLORS.white,
-  },
-  catScroll: {
-    flexDirection: 'row',
-  },
+  toggleActive: { backgroundColor: '#000', borderColor: '#000' },
+  toggleText: { fontSize: 13, fontWeight: '600', color: '#111' },
+  toggleTextActive: { color: '#fff' },
   catChip: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
-    marginRight: SPACING.xs,
+    borderColor: '#ccc',
+    backgroundColor: '#fff',
+    marginRight: 8,
   },
-  catChipSelected: {
-    backgroundColor: COLORS.black,
-    borderColor: COLORS.black,
-  },
-  catChipText: {
-    fontSize: 12,
-    color: COLORS.textPrimary,
-    fontWeight: '500',
-  },
-  catChipTextSelected: {
-    color: COLORS.white,
-  },
+  catChipSelected: { backgroundColor: '#000', borderColor: '#000' },
+  catChipText: { fontSize: 12, color: '#111', fontWeight: '500' },
+  catChipTextSelected: { color: '#fff' },
   submitButton: {
-    backgroundColor: COLORS.black,
-    paddingVertical: SPACING.md,
+    backgroundColor: '#000',
+    paddingVertical: 14,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: SPACING.sm,
-    marginBottom: SPACING.xl,
+    marginTop: 8,
+    marginBottom: 40,
   },
-  submitButtonText: {
-    color: COLORS.white,
-    fontSize: 15,
-    fontWeight: '700',
-  },
+  submitButtonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });

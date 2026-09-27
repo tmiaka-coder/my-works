@@ -1,37 +1,28 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+// src/context/ExpenseContext.tsx
+import React, { createContext, useContext, useState } from 'react';
 import { Transaction } from '../../types';
-import { MOCK_TRANSACTIONS } from '../mocks/mockTransactions';
+import { mockTransactions } from '../mocks/mockTransactions';
 
 interface ExpenseContextType {
   transactions: Transaction[];
-  exchangeRate: number;
-  setExchangeRate: (rate: number) => void;
-  addTransaction: (tx: Omit<Transaction, 'id'>) => void;
+  addTransaction: (newTx: Omit<Transaction, 'id'>) => void;
 }
 
 const ExpenseContext = createContext<ExpenseContextType | undefined>(undefined);
 
-export const ExpenseProvider = ({ children }: { children: ReactNode }) => {
-  const [transactions, setTransactions] = useState<Transaction[]>(MOCK_TRANSACTIONS);
-  const [exchangeRate, setExchangeRate] = useState<number>(90);
+export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions || []);
 
-  const addTransaction = (newTxData: Omit<Transaction, 'id'>) => {
-    const newTx: Transaction = {
-      ...newTxData,
+  const addTransaction = (newTx: Omit<Transaction, 'id'>) => {
+    const created: Transaction = {
+      ...newTx,
       id: `tx_${Date.now()}`,
     };
-    setTransactions((prev) => [newTx, ...prev]);
+    setTransactions((prev) => [created, ...(prev || [])]);
   };
 
   return (
-    <ExpenseContext.Provider
-      value={{
-        transactions,
-        exchangeRate,
-        setExchangeRate,
-        addTransaction,
-      }}
-    >
+    <ExpenseContext.Provider value={{ transactions: transactions || [], addTransaction }}>
       {children}
     </ExpenseContext.Provider>
   );

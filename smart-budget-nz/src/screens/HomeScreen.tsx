@@ -1,363 +1,81 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+// src/screens/HomeScreen.tsx
+import React from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useExpenses } from '../context/ExpenseContext';
-import { COLORS, SPACING } from '../constants/theme';
-import { Transaction } from '../../types';
 
-export const HomeScreen = () => {
-  const { transactions, exchangeRate } = useExpenses();
-  const [selectedMonth, setSelectedMonth] = useState('2026-09');
-  const [expandedTxId, setExpandedTxId] = useState<string | null>(null);
+export const HomeScreen = ({ navigation }: any) => {
+  const { transactions } = useExpenses();
 
-  // 月変更処理
-  const changeMonth = (delta: number) => {
-    const [year, month] = selectedMonth.split('-').map(Number);
-    const date = new Date(year, month - 1 + delta, 1);
-    const newY = date.getFullYear();
-    const newM = String(date.getMonth() + 1).padStart(2, '0');
-    setSelectedMonth(`${newY}-${newM}`);
-  };
-
-  // 選択月のデータ抽出（Contextから取得したtransactionsを使用）
-  const filteredTransactions = transactions.filter((tx) =>
-    tx.purchaseDate.startsWith(selectedMonth)
-  );
-
-  const totalNZD = filteredTransactions.reduce((sum, tx) => sum + tx.totalAmount, 0);
-  const totalJPY = Math.round(totalNZD * exchangeRate);
-
-  const user1Total = filteredTransactions
-    .filter((tx) => tx.paidByUserId === 'user_01')
-    .reduce((sum, tx) => sum + tx.totalAmount, 0);
-  const user1Ratio = totalNZD > 0 ? Math.round((user1Total / totalNZD) * 100) : 0;
-  const user2Ratio = totalNZD > 0 ? 100 - user1Ratio : 0;
-
-  // アコーディオン開閉の切り替え
-  const toggleExpand = (id: string) => {
-    setExpandedTxId((prev) => (prev === id ? null : id));
-  };
-
-  const renderTransactionItem = ({ item }: { item: Transaction }) => {
-    const isUser1 = item.paidByUserId === 'user_01';
-    const isExpanded = expandedTxId === item.id;
-
-    return (
-      <View style={styles.txCardContainer}>
-        <TouchableOpacity
-          style={styles.txCardHeader}
-          onPress={() => toggleExpand(item.id)}
-          activeOpacity={0.7}
-        >
-          <View style={styles.txMainInfo}>
-            <View style={styles.storeHeader}>
-              <Text style={styles.storeName}>{item.storeName}</Text>
-              <View
-                style={[
-                  styles.userBadge,
-                  { backgroundColor: isUser1 ? COLORS.user1 : COLORS.user2 },
-                ]}
-              >
-                <Text style={styles.userBadgeText}>{isUser1 ? 'User 1' : 'User 2'}</Text>
-              </View>
-            </View>
-            <Text style={styles.txDate}>{item.purchaseDate}</Text>
-          </View>
-
-          <View style={styles.txAmountInfo}>
-            <View style={styles.amountWithArrow}>
-              <Text style={styles.txAmountNZD}>${item.totalAmount.toFixed(2)}</Text>
-              <Text style={styles.arrowIcon}>{isExpanded ? ' ▲' : ' ▼'}</Text>
-            </View>
-            <Text style={styles.txAmountJPY}>
-              ≈ ¥{Math.round(item.totalAmount * exchangeRate).toLocaleString()}
-            </Text>
-          </View>
-        </TouchableOpacity>
-
-        {/* アコーディオン展開部分（商品明細） */}
-        {isExpanded && (
-          <View style={styles.expandedDetails}>
-            <Text style={styles.detailTitle}>Itemized Details</Text>
-            {item.items.map((lineItem) => (
-              <View key={lineItem.id} style={styles.detailRow}>
-                <Text style={styles.itemName} numberOfLines={1}>
-                  {lineItem.name} <Text style={styles.itemQty}>x{lineItem.quantity}</Text>
-                </Text>
-                <Text style={styles.itemPrice}>
-                  ${(lineItem.price * lineItem.quantity).toFixed(2)}
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
-      </View>
-    );
-  };
+  // transactions が undefined の場合も安全に空配列として扱う
+  const safeTransactions = transactions || [];
+  const totalExpense = safeTransactions.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0);
 
   return (
-    <View style={styles.container}>
-      {/* Month Selector */}
-      <View style={styles.monthSelector}>
-        <TouchableOpacity onPress={() => changeMonth(-1)} style={styles.monthNavBtn}>
-          <Text style={styles.monthNavText}>‹</Text>
-        </TouchableOpacity>
-        <Text style={styles.monthTitle}>{selectedMonth}</Text>
-        <TouchableOpacity onPress={() => changeMonth(1)} style={styles.monthNavBtn}>
-          <Text style={styles.monthNavText}>›</Text>
-        </TouchableOpacity>
+    <ScrollView style={styles.container}>
+      <Text style={styles.title}>Home Dashboard</Text>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Total Expenses</Text>
+        <Text style={styles.cardAmount}>${totalExpense.toFixed(2)} NZD</Text>
       </View>
 
-      {/* Summary Card */}
-      <View style={styles.summaryCard}>
-        <Text style={styles.summaryLabel}>Total Expenses ({selectedMonth})</Text>
-        <Text style={styles.summaryNZD}>${totalNZD.toFixed(2)}</Text>
-        <View style={styles.jpyRow}>
-          <Text style={styles.summaryJPY}>≈ ¥{totalJPY.toLocaleString()}</Text>
-          <Text style={styles.rateTag}>@ ¥{exchangeRate} / NZD</Text>
-        </View>
-
-        {/* Payer Ratio Bar */}
-        <View style={styles.ratioContainer}>
-          <Text style={styles.ratioLabel}>Paid By Breakdown</Text>
-          <View style={styles.barTrack}>
-            <View style={[styles.barUser1, { width: `${user1Ratio}%` }]} />
-            <View style={[styles.barUser2, { width: `${user2Ratio}%` }]} />
-          </View>
-          <View style={styles.ratioLegend}>
-            <Text style={styles.legendText}>User 1: {user1Ratio}%</Text>
-            <Text style={styles.legendText}>User 2: {user2Ratio}%</Text>
-          </View>
-        </View>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Recent Transactions</Text>
+        {safeTransactions.length === 0 ? (
+          <Text style={styles.emptyText}>No transactions registered.</Text>
+        ) : (
+          safeTransactions.slice(0, 5).map((item) => (
+            <View key={item.id} style={styles.txRow}>
+              <View>
+                <Text style={styles.storeName}>{item.storeName}</Text>
+                <Text style={styles.txDate}>{item.purchaseDate}</Text>
+              </View>
+              <Text style={styles.txAmount}>${item.totalAmount.toFixed(2)}</Text>
+            </View>
+          ))
+        )}
       </View>
 
-      {/* Recent Transactions List */}
-      <Text style={styles.sectionTitle}>Recent Transactions</Text>
-      <FlatList
-        data={filteredTransactions}
-        keyExtractor={(item) => item.id}
-        renderItem={renderTransactionItem}
-        contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>No expenses recorded for this month.</Text>
-        }
-      />
-    </View>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => navigation?.navigate('Scan')}
+      >
+        <Text style={styles.buttonText}>+ Add New Expense</Text>
+      </TouchableOpacity>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-    paddingHorizontal: SPACING.md,
-    paddingTop: SPACING.md,
-  },
-  monthSelector: {
+  container: { flex: 1, padding: 16, backgroundColor: '#f9f9f9' },
+  title: { fontSize: 24, fontWeight: '700', marginBottom: 16, color: '#111' },
+  card: { backgroundColor: '#000', padding: 20, borderRadius: 12, marginBottom: 20 },
+  cardTitle: { color: '#888', fontSize: 13, textTransform: 'uppercase' },
+  cardAmount: { color: '#fff', fontSize: 28, fontWeight: '700', marginTop: 4 },
+  section: { marginBottom: 20 },
+  sectionTitle: { fontSize: 16, fontWeight: '600', marginBottom: 12, color: '#333' },
+  emptyText: { color: '#888', fontStyle: 'italic' },
+  txRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: SPACING.md,
-    backgroundColor: COLORS.surface,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
     borderRadius: 8,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    marginBottom: 8,
   },
-  monthNavBtn: {
-    padding: SPACING.xs,
-  },
-  monthNavText: {
-    fontSize: 22,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-  },
-  monthTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-  },
-  summaryCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: SPACING.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    marginBottom: SPACING.lg,
-  },
-  summaryLabel: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    fontWeight: '500',
-  },
-  summaryNZD: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-    marginTop: SPACING.xs,
-  },
-  jpyRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SPACING.md,
-  },
-  summaryJPY: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-  },
-  rateTag: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
-    backgroundColor: COLORS.border,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  ratioContainer: {
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    paddingTop: SPACING.sm,
-  },
-  ratioLabel: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.xs,
-  },
-  barTrack: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.border,
-    flexDirection: 'row',
-    overflow: 'hidden',
-  },
-  barUser1: {
-    height: '100%',
-    backgroundColor: COLORS.user1,
-  },
-  barUser2: {
-    height: '100%',
-    backgroundColor: COLORS.user2,
-  },
-  ratioLegend: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: SPACING.xs,
-  },
-  legendText: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-    marginBottom: SPACING.sm,
-  },
-  listContainer: {
-    paddingBottom: SPACING.xl,
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: COLORS.textSecondary,
-    marginTop: SPACING.lg,
-  },
-  txCardContainer: {
-    backgroundColor: COLORS.background,
+  storeName: { fontSize: 15, fontWeight: '600', color: '#222' },
+  txDate: { fontSize: 12, color: '#888', marginTop: 2 },
+  txAmount: { fontSize: 15, fontWeight: '700', color: '#000' },
+  button: {
+    backgroundColor: '#000',
+    paddingVertical: 14,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    marginBottom: SPACING.sm,
-    overflow: 'hidden',
-  },
-  txCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.md,
+    marginBottom: 40,
   },
-  txMainInfo: {
-    flex: 1,
-  },
-  storeHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-  },
-  storeName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-  },
-  userBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  userBadgeText: {
-    fontSize: 10,
-    color: COLORS.white,
-    fontWeight: '600',
-  },
-  txDate: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
-  txAmountInfo: {
-    alignItems: 'flex-end',
-  },
-  amountWithArrow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  txAmountNZD: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-  },
-  arrowIcon: {
-    fontSize: 10,
-    color: COLORS.textSecondary,
-  },
-  txAmountJPY: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
-  },
-  expandedDetails: {
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    backgroundColor: COLORS.surface,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-  },
-  detailTitle: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.xs,
-    textTransform: 'uppercase',
-  },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 3,
-  },
-  itemName: {
-    fontSize: 13,
-    color: COLORS.textPrimary,
-    flex: 1,
-    marginRight: SPACING.sm,
-  },
-  itemQty: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
-  },
-  itemPrice: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-  },
+  buttonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });
