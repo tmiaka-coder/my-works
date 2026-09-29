@@ -1,5 +1,5 @@
 // src/mocks/mockTransactions.ts
-import { Transaction, SNACK_BEVERAGES } from '../../types';
+import { Transaction, SNACK_BEVERAGES } from '../types';
 
 export const mockTransactions: Transaction[] = [
   {

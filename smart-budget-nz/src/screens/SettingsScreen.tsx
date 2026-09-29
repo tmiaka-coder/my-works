@@ -1,5 +1,4 @@
-// src/screens/SettingsScreen.tsx
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -9,32 +8,32 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { useExpenses, NZ_THEMES } from '../context/ExpenseContext';
 
-// NZ風テーマカラー定義
-export const NZ_THEMES = [
-  { id: 'monochrome', name: 'NZ Black & White', primary: '#000000', bg: '#f9f9f9' },
-  { id: 'fern_green', name: 'Fern Green', primary: '#2D5A27', bg: '#F4F7F4' },
-  { id: 'lake_blue', name: 'Tekapo Blue', primary: '#1A5F7A', bg: '#F0F6F9' },
-  { id: 'warm_gold', name: 'Autumn Gold', primary: '#C87D55', bg: '#FAF6F0' },
-];
+interface SettingsScreenProps {
+  navigation?: any;
+}
 
-export const SettingsScreen = () => {
-  const [exchangeRate, setExchangeRate] = useState<string>('90.00');
-  const [user1Name, setUser1Name] = useState<string>('User 1');
-  const [user2Name, setUser2Name] = useState<string>('User 2');
-  const [selectedTheme, setSelectedTheme] = useState<string>('monochrome');
+export const SettingsScreen: React.FC<SettingsScreenProps> = () => {
+  const {
+    user1Name,
+    setUser1Name,
+    user2Name,
+    setUser2Name,
+    exchangeRate,
+    setExchangeRate,
+    currentTheme,
+    setCurrentThemeId,
+  } = useExpenses();
 
   const handleSaveSettings = () => {
     Alert.alert('Saved', '設定を保存しました。');
   };
 
-  const activeThemeObj = NZ_THEMES.find((t) => t.id === selectedTheme) || NZ_THEMES[0];
-
   return (
-    <ScrollView style={[styles.container, { backgroundColor: activeThemeObj.bg }]}>
+    <ScrollView style={[styles.container, { backgroundColor: currentTheme.bg }]}>
       <Text style={styles.title}>Settings</Text>
 
-      {/* ユーザー名変更 */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>User Names</Text>
         <View style={styles.card}>
@@ -55,12 +54,11 @@ export const SettingsScreen = () => {
         </View>
       </View>
 
-      {/* NZ風テーマカラー選択 */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>App Theme (NZ Inspired)</Text>
         <View style={styles.themeGrid}>
           {NZ_THEMES.map((theme) => {
-            const isSelected = selectedTheme === theme.id;
+            const isSelected = currentTheme.id === theme.id;
             return (
               <TouchableOpacity
                 key={theme.id}
@@ -68,7 +66,7 @@ export const SettingsScreen = () => {
                   styles.themeCard,
                   isSelected && { borderColor: theme.primary, borderWidth: 2 },
                 ]}
-                onPress={() => setSelectedTheme(theme.id)}
+                onPress={() => setCurrentThemeId(theme.id)}
               >
                 <View style={[styles.colorPreview, { backgroundColor: theme.primary }]} />
                 <Text style={styles.themeName}>{theme.name}</Text>
@@ -78,7 +76,6 @@ export const SettingsScreen = () => {
         </View>
       </View>
 
-      {/* 為替レート設定 */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Currency & Rate</Text>
         <View style={styles.card}>
@@ -87,15 +84,14 @@ export const SettingsScreen = () => {
             <Text style={styles.prefix}>1 NZD = ¥</Text>
             <TextInput
               style={styles.rateInput}
-              value={exchangeRate}
-              onChangeText={setExchangeRate}
+              value={exchangeRate.toString()}
+              onChangeText={(val) => setExchangeRate(parseFloat(val) || 0)}
               keyboardType="decimal-pad"
             />
           </View>
         </View>
       </View>
 
-      {/* About App（枠で囲まずシンプルなテキスト表示） */}
       <View style={styles.aboutSection}>
         <Text style={styles.aboutTitle}>About App</Text>
         <View style={styles.aboutRow}>
@@ -108,9 +104,8 @@ export const SettingsScreen = () => {
         </View>
       </View>
 
-      {/* 保存ボタン */}
       <TouchableOpacity
-        style={[styles.saveButton, { backgroundColor: activeThemeObj.primary }]}
+        style={[styles.saveButton, { backgroundColor: currentTheme.primary }]}
         onPress={handleSaveSettings}
       >
         <Text style={styles.saveButtonText}>Save Settings</Text>

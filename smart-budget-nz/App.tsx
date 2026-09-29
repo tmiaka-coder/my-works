@@ -1,4 +1,3 @@
-// App.tsx
 import React, { useState } from 'react';
 import {
   SafeAreaView,
@@ -8,7 +7,7 @@ import {
   StyleSheet,
   StatusBar,
 } from 'react-native';
-import { ExpenseProvider } from './src/context/ExpenseContext';
+import { ExpenseProvider, useExpenses } from './src/context/ExpenseContext';
 
 import { HomeScreen } from './src/screens/HomeScreen';
 import { ExpensesScreen } from './src/screens/ExpensesScreen';
@@ -18,14 +17,9 @@ import { ScanScreen } from './src/screens/ScanScreen';
 
 export type TabType = 'Home' | 'Expenses' | 'Scan' | 'PriceCheck' | 'Settings';
 
-export interface NavigationProps {
-  navigation: {
-    navigate: (screenName: TabType) => void;
-  };
-}
-
-export default function App() {
+function AppContent() {
   const [activeTab, setActiveTab] = useState<TabType>('Home');
+  const { currentTheme } = useExpenses();
 
   const navigation = {
     navigate: (screenName: TabType) => {
@@ -51,32 +45,46 @@ export default function App() {
   };
 
   return (
-    <ExpenseProvider>
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-        
-        <View style={styles.content}>{renderScreen()}</View>
+    <SafeAreaView style={[styles.container, { backgroundColor: currentTheme.bg }]}>
+      <StatusBar barStyle="dark-content" backgroundColor={currentTheme.bg} />
+      
+      <View style={styles.content}>{renderScreen()}</View>
 
-        <View style={styles.tabBar}>
-          {(['Home', 'Expenses', 'Scan', 'PriceCheck', 'Settings'] as TabType[]).map((tab) => (
+      <View style={styles.tabBar}>
+        {(['Home', 'Expenses', 'Scan', 'PriceCheck', 'Settings'] as TabType[]).map((tab) => {
+          const isActive = activeTab === tab;
+          return (
             <TouchableOpacity
               key={tab}
               style={styles.tabItem}
               onPress={() => setActiveTab(tab)}
             >
-              <Text style={activeTab === tab ? styles.activeTabText : styles.tabText}>
+              <Text
+                style={[
+                  styles.tabText,
+                  isActive && { color: currentTheme.primary, fontWeight: '700' },
+                ]}
+              >
                 {tab === 'PriceCheck' ? 'Price Check' : tab}
               </Text>
             </TouchableOpacity>
-          ))}
-        </View>
-      </SafeAreaView>
+          );
+        })}
+      </View>
+    </SafeAreaView>
+  );
+}
+
+export default function App() {
+  return (
+    <ExpenseProvider>
+      <AppContent />
     </ExpenseProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#ffffff' },
+  container: { flex: 1 },
   content: { flex: 1 },
   tabBar: {
     flexDirection: 'row',
@@ -87,5 +95,4 @@ const styles = StyleSheet.create({
   },
   tabItem: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 8 },
   tabText: { fontSize: 11, color: '#888888', fontWeight: '500' },
-  activeTabText: { fontSize: 11, color: '#000000', fontWeight: '700' },
 });
