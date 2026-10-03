@@ -9,6 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { useExpenses, NZ_THEMES } from '../context/ExpenseContext';
+import { MAIN_CATEGORIES } from '../types';
 
 interface SettingsScreenProps {
   navigation?: any;
@@ -24,38 +25,70 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = () => {
     setExchangeRate,
     currentTheme,
     setCurrentThemeId,
+    monthlyBudget,
+    setMonthlyBudget,
+    categoryBudgets,
+    setCategoryBudget,
   } = useExpenses();
 
   const handleSaveSettings = () => {
-    Alert.alert('Saved', '設定を保存しました。');
+    Alert.alert('Saved', 'Your settings have been updated.');
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: currentTheme.bg }]}>
+    <ScrollView style={[styles.container, { backgroundColor: currentTheme.bg }]} contentContainerStyle={styles.contentContainer}>
       <Text style={styles.title}>Settings</Text>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>User Names</Text>
+        <Text style={styles.sectionTitle}>People</Text>
         <View style={styles.card}>
-          <Text style={styles.label}>User 1 Name</Text>
+          <Text style={styles.label}>Person 1</Text>
           <TextInput
             style={styles.textInput}
             value={user1Name}
             onChangeText={setUser1Name}
-            placeholder="User 1"
+            placeholder="Person 1"
           />
-          <Text style={[styles.label, { marginTop: 12 }]}>User 2 Name</Text>
+          <Text style={[styles.label, { marginTop: 12 }]}>Person 2</Text>
           <TextInput
             style={styles.textInput}
             value={user2Name}
             onChangeText={setUser2Name}
-            placeholder="User 2"
+            placeholder="Person 2"
           />
         </View>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>App Theme (NZ Inspired)</Text>
+        <Text style={styles.sectionTitle}>Monthly budget and category caps</Text>
+        <View style={styles.card}>
+          <Text style={styles.label}>Monthly budget (NZD)</Text>
+          <TextInput
+            style={styles.textInput}
+            value={String(monthlyBudget)}
+            onChangeText={(val) => setMonthlyBudget(Number(val) || 0)}
+            keyboardType="decimal-pad"
+            placeholder="2500"
+          />
+
+          <View style={styles.categoryBudgetList}>
+            {Object.values(MAIN_CATEGORIES).map((cat) => (
+              <View key={cat.id} style={styles.categoryBudgetRow}>
+                <Text style={styles.categoryLabel}>{cat.label}</Text>
+                <TextInput
+                  style={styles.categoryInput}
+                  value={String(categoryBudgets[cat.id] ?? 0)}
+                  onChangeText={(val) => setCategoryBudget(cat.id, Number(val) || 0)}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+            ))}
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>App theme</Text>
         <View style={styles.themeGrid}>
           {NZ_THEMES.map((theme) => {
             const isSelected = currentTheme.id === theme.id;
@@ -77,9 +110,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = () => {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Currency & Rate</Text>
+        <Text style={styles.sectionTitle}>Currency & rate</Text>
         <View style={styles.card}>
-          <Text style={styles.label}>NZD / JPY Exchange Rate</Text>
+          <Text style={styles.label}>NZD / JPY exchange rate</Text>
           <View style={styles.inputRow}>
             <Text style={styles.prefix}>1 NZD = ¥</Text>
             <TextInput
@@ -93,9 +126,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = () => {
       </View>
 
       <View style={styles.aboutSection}>
-        <Text style={styles.aboutTitle}>About App</Text>
+        <Text style={styles.aboutTitle}>About this app</Text>
         <View style={styles.aboutRow}>
-          <Text style={styles.aboutLabel}>App Name:</Text>
+          <Text style={styles.aboutLabel}>App name:</Text>
           <Text style={styles.aboutValue}>Smart Budget NZ</Text>
         </View>
         <View style={styles.aboutRow}>
@@ -108,7 +141,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = () => {
         style={[styles.saveButton, { backgroundColor: currentTheme.primary }]}
         onPress={handleSaveSettings}
       >
-        <Text style={styles.saveButtonText}>Save Settings</Text>
+        <Text style={styles.saveButtonText}>Save settings</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -116,24 +149,48 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
-  title: { fontSize: 24, fontWeight: '700', marginBottom: 20, color: '#111' },
+  contentContainer: { paddingBottom: 32 },
+  title: { fontSize: 28, fontWeight: '800', marginBottom: 20, color: '#111' },
   section: { marginBottom: 24 },
-  sectionTitle: { fontSize: 14, fontWeight: '600', color: '#555', marginBottom: 8 },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: '#555', marginBottom: 8 },
   card: {
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 16,
     borderWidth: 1,
     borderColor: '#eee',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   label: { fontSize: 12, color: '#666', fontWeight: '600', marginBottom: 6 },
   textInput: {
     backgroundColor: '#f4f4f5',
-    borderRadius: 8,
+    borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 15,
     color: '#111',
+  },
+  categoryBudgetList: { marginTop: 14 },
+  categoryBudgetRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  categoryLabel: { fontSize: 12, color: '#444', flex: 1 },
+  categoryInput: {
+    width: 90,
+    backgroundColor: '#f4f4f5',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 13,
+    color: '#111',
+    textAlign: 'right',
   },
   inputRow: {
     flexDirection: 'row',
@@ -160,13 +217,13 @@ const styles = StyleSheet.create({
   colorPreview: { width: 20, height: 20, borderRadius: 10 },
   themeName: { fontSize: 12, fontWeight: '600', color: '#222' },
   aboutSection: { marginTop: 8, marginBottom: 28, paddingHorizontal: 4 },
-  aboutTitle: { fontSize: 14, fontWeight: '600', color: '#777', marginBottom: 8 },
+  aboutTitle: { fontSize: 14, fontWeight: '700', color: '#777', marginBottom: 8 },
   aboutRow: { flexDirection: 'row', paddingVertical: 3 },
-  aboutLabel: { fontSize: 13, color: '#888', width: 90 },
+  aboutLabel: { fontSize: 13, color: '#888', width: 110 },
   aboutValue: { fontSize: 13, color: '#333', fontWeight: '500' },
   saveButton: {
     paddingVertical: 14,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
     marginBottom: 40,
   },

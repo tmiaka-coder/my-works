@@ -18,8 +18,6 @@ export const PriceCheckScreen: React.FC<PriceCheckScreenProps> = () => {
   const { transactions, currentTheme, exchangeRate } = useExpenses();
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  const safeTransactions = transactions || [];
-
   const allPurchasedItems = useMemo(() => {
     const list: Array<{
       id: string;
@@ -28,48 +26,56 @@ export const PriceCheckScreen: React.FC<PriceCheckScreenProps> = () => {
       quantity: number;
       storeName: string;
       purchaseDate: string;
+      unitPrice: number;
     }> = [];
 
-    safeTransactions.forEach((tx) => {
+    transactions.forEach((tx) => {
       if (tx.items && tx.items.length > 0) {
         tx.items.forEach((item, idx) => {
+          const quantity = item.quantity || 1;
           list.push({
             id: `${tx.id}-${idx}`,
             itemName: item.name,
             price: item.price,
-            quantity: item.quantity,
-            storeName: tx.storeName || 'Unknown Store',
+            quantity,
+            storeName: tx.storeName || 'Unknown store',
             purchaseDate: tx.purchaseDate || '',
+            unitPrice: item.price / quantity,
           });
         });
       }
     });
+
     return list;
-  }, [safeTransactions]);
+  }, [transactions]);
 
   const filteredItems = useMemo(() => {
     if (!searchQuery.trim()) return [];
-    const q = searchQuery.toLowerCase();
-    return allPurchasedItems.filter((item) =>
-      item.itemName.toLowerCase().includes(q)
-    );
+    const q = searchQuery.toLowerCase().replace(/[^a-z0-9\s]/g, '');
+    return allPurchasedItems.filter((item) => {
+      const itemName = item.itemName.toLowerCase().replace(/[^a-z0-9\s]/g, '');
+      const storeName = item.storeName.toLowerCase();
+      return itemName.includes(q) || storeName.includes(q);
+    });
   }, [searchQuery, allPurchasedItems]);
 
   const priceSummary = useMemo(() => {
     if (filteredItems.length === 0) return null;
 
     const prices = filteredItems.map((i) => i.price);
+    const unitPrices = filteredItems.map((i) => i.unitPrice);
     const minPrice = Math.min(...prices);
-    const maxPrice = Math.max(...prices);
     const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
-
-    const lowestItem = filteredItems.find((i) => i.price === minPrice);
+    const bestValue = filteredItems.reduce((best, item) =>
+      item.unitPrice < best.unitPrice ? item : best,
+      filteredItems[0]
+    );
 
     return {
       minPrice,
-      maxPrice,
       avgPrice,
-      bestStore: lowestItem ? lowestItem.storeName : '-',
+      bestValue,
+      lowestUnit: Math.min(...unitPrices),
     };
   }, [filteredItems]);
 
@@ -79,14 +85,14 @@ export const PriceCheckScreen: React.FC<PriceCheckScreenProps> = () => {
       style={[styles.container, { backgroundColor: currentTheme.bg }]}
     >
       <View style={styles.inner}>
-        <Text style={styles.title}>Price Compare</Text>
-        <Text style={styles.subtitle}>過去の購入履歴から同じ商品の価格差を比較できます。</Text>
+        <Text style={styles.title}>Price compare</Text>
+        <Text style={styles.subtitle}>Review past purchases to spot the best value across stores.</Text>
 
         <View style={styles.searchBarContainer}>
           <Text style={styles.searchIcon}>🔍</Text>
           <TextInput
             style={styles.searchInput}
-            placeholder="商品名で検索 (例: Milk, Bread...)"
+            placeholder="Search by item name or store"
             placeholderTextColor="#888"
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -99,47 +105,46 @@ export const PriceCheckScreen: React.FC<PriceCheckScreenProps> = () => {
             <View style={styles.section}>
               {priceSummary && (
                 <View style={[styles.summaryCard, { borderColor: currentTheme.primary }]}>
-                  <Text style={styles.summaryTitle}>Price Statistics</Text>
+                  <Text style={styles.summaryTitle}>Price stats</Text>
                   <View style={styles.summaryGrid}>
                     <View style={styles.summaryItem}>
-                      <Text style={styles.summaryLabel}>Lowest (最安値)</Text>
+                      <Text style={styles.summaryLabel}>Lowest</Text>
                       <Text style={[styles.summaryValue, { color: currentTheme.primary }]}>
                         ${priceSummary.minPrice.toFixed(2)}
                       </Text>
-                      <Text style={styles.summarySub}>({priceSummary.bestStore})</Text>
+                      <Text style={styles.summarySub}>Best store: {filteredItems.find((item) => item.price === priceSummary.minPrice)?.storeName ?? '—'}</Text>
                     </View>
                     <View style={styles.summaryItem}>
-                      <Text style={styles.summaryLabel}>Average (平均)</Text>
-                      <Text style={styles.summaryValue}>
-                        ${priceSummary.avgPrice.toFixed(2)}
-                      </Text>
-                      <Text style={styles.summarySub}>
-                        (¥{Math.round(priceSummary.avgPrice * exchangeRate)})
-                      </Text>
+                      <Text style={styles.summaryLabel}>Average</Text>
+                      <Text style={styles.summaryValue}>${priceSummary.avgPrice.toFixed(2)}</Text>
+                      <Text style={styles.summarySub}>≈ ¥{Math.round(priceSummary.avgPrice * exchangeRate)}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.summaryGridSecondary}>
+                    <View style={styles.summaryItem}>
+                      <Text style={styles.summaryLabel}>Best value</Text>
+                      <Text style={styles.summaryValue}>{priceSummary.bestValue.itemName}</Text>
+                      <Text style={styles.summarySub}>Unit: ${priceSummary.bestValue.unitPrice.toFixed(2)}</Text>
                     </View>
                   </View>
                 </View>
               )}
 
-              <Text style={styles.sectionTitle}>
-                History ({filteredItems.length})
-              </Text>
+              <Text style={styles.sectionTitle}>History ({filteredItems.length})</Text>
               {filteredItems.length === 0 ? (
-                <Text style={styles.emptyText}>該当する商品が見つかりませんでした。</Text>
+                <Text style={styles.emptyText}>No matching products found.</Text>
               ) : (
                 filteredItems.map((item) => (
                   <View key={item.id} style={styles.itemCard}>
                     <View style={styles.itemMain}>
                       <Text style={styles.itemName}>{item.itemName}</Text>
-                      <Text style={styles.itemSub}>
-                        {item.storeName} • {item.purchaseDate}
-                      </Text>
+                      <Text style={styles.itemSub}>{item.storeName} • {item.purchaseDate}</Text>
+                      <Text style={styles.itemSub}>Unit: ${item.unitPrice.toFixed(2)}</Text>
                     </View>
                     <View style={styles.itemPriceArea}>
                       <Text style={styles.itemPrice}>${item.price.toFixed(2)}</Text>
-                      <Text style={styles.itemJpy}>
-                        ¥{Math.round(item.price * exchangeRate)}
-                      </Text>
+                      <Text style={styles.itemJpy}>¥{Math.round(item.price * exchangeRate)}</Text>
                     </View>
                   </View>
                 ))
@@ -147,9 +152,9 @@ export const PriceCheckScreen: React.FC<PriceCheckScreenProps> = () => {
             </View>
           ) : (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Quick Comparison Examples</Text>
+              <Text style={styles.sectionTitle}>Quick examples</Text>
               <Text style={styles.hintText}>
-                上の検索バーに「Milk」や「Bread」などのキーワードを入力すると、店舗ごとの最安値や平均価格が自動集計されます。
+                Try searching for items like “Milk”, “Bread”, or a supermarket name to compare prices and units instantly.
               </Text>
             </View>
           )}
@@ -162,13 +167,13 @@ export const PriceCheckScreen: React.FC<PriceCheckScreenProps> = () => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   inner: { flex: 1, padding: 16 },
-  title: { fontSize: 24, fontWeight: '700', color: '#111', marginBottom: 4 },
+  title: { fontSize: 28, fontWeight: '800', color: '#111', marginBottom: 4 },
   subtitle: { fontSize: 13, color: '#666', marginBottom: 16 },
   searchBarContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    borderRadius: 10,
+    borderRadius: 12,
     paddingHorizontal: 12,
     height: 46,
     borderWidth: 1,
@@ -182,17 +187,18 @@ const styles = StyleSheet.create({
   summaryCard: {
     backgroundColor: '#fff',
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 2,
     marginBottom: 16,
   },
   summaryTitle: { fontSize: 13, fontWeight: '700', color: '#555', textTransform: 'uppercase', marginBottom: 10 },
   summaryGrid: { flexDirection: 'row', justifyContent: 'space-between' },
+  summaryGridSecondary: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
   summaryItem: { flex: 1 },
   summaryLabel: { fontSize: 12, color: '#666' },
-  summaryValue: { fontSize: 20, fontWeight: '700', marginTop: 2 },
+  summaryValue: { fontSize: 18, fontWeight: '700', marginTop: 2 },
   summarySub: { fontSize: 11, color: '#888', marginTop: 2 },
-  sectionTitle: { fontSize: 15, fontWeight: '600', color: '#333', marginBottom: 12 },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: '#333', marginBottom: 12 },
   emptyText: { color: '#888', fontStyle: 'italic', paddingVertical: 12 },
   hintText: { fontSize: 13, color: '#666', lineHeight: 20 },
   itemCard: {
@@ -201,7 +207,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fff',
     padding: 14,
-    borderRadius: 8,
+    borderRadius: 10,
     marginBottom: 8,
     borderWidth: 1,
     borderColor: '#eee',

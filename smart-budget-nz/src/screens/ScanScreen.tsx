@@ -15,30 +15,27 @@ interface ScanScreenProps {
   navigation?: any;
 }
 
+const createEmptyItem = (): ExpenseItem => ({
+  id: `item_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+  name: '',
+  price: 0,
+  quantity: 1,
+  mainCategoryId: 'food_groceries',
+});
+
 export const ScanScreen: React.FC<ScanScreenProps> = ({ navigation }) => {
   const { addTransaction, currentTheme, user1Name, user2Name } = useExpenses();
 
   const [storeName, setStoreName] = useState<string>('');
-  const [purchaseDate, setPurchaseDate] = useState<string>(
-    new Date().toISOString().split('T')[0]
-  );
+  const [purchaseDate, setPurchaseDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [paidByUserId, setPaidByUserId] = useState<'user_01' | 'user_02'>('user_01');
-  const [items, setItems] = useState<ExpenseItem[]>([
-    { name: '', price: 0, quantity: 1, mainCategoryId: 'food_groceries' },
-  ]);
+  const [items, setItems] = useState<ExpenseItem[]>([createEmptyItem()]);
 
   const handleAddItem = () => {
-    setItems([
-      ...items,
-      { name: '', price: 0, quantity: 1, mainCategoryId: 'food_groceries' },
-    ]);
+    setItems([...items, createEmptyItem()]);
   };
 
-  const handleUpdateItem = (
-    index: number,
-    field: keyof ExpenseItem,
-    value: any
-  ) => {
+  const handleUpdateItem = (index: number, field: keyof ExpenseItem, value: any) => {
     const updated = [...items];
     updated[index] = { ...updated[index], [field]: value };
     setItems(updated);
@@ -56,23 +53,43 @@ export const ScanScreen: React.FC<ScanScreenProps> = ({ navigation }) => {
 
   const handleSave = () => {
     if (!storeName.trim()) {
-      Alert.alert('入力エラー', '店舗名を入力してください。');
+      Alert.alert('Missing store name', 'Please enter the store name.');
       return;
     }
 
     const validItems = items.filter((item) => item.name.trim().length > 0);
 
+    if (validItems.length === 0) {
+      Alert.alert('No items added', 'Please add at least one product.');
+      return;
+    }
+
+    const invalidItem = validItems.find((item) => Number(item.price) <= 0 || Number(item.quantity) <= 0);
+    if (invalidItem) {
+      Alert.alert('Invalid details', 'Price and quantity must be greater than zero.');
+      return;
+    }
+
+    const cleanedItems = validItems.map((item) => ({
+      ...item,
+      id: item.id ?? `item_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      name: item.name.trim(),
+      price: Number(item.price),
+      quantity: Number(item.quantity) || 1,
+      mainCategoryId: item.mainCategoryId || 'food_groceries',
+    }));
+
     addTransaction({
-      storeName,
+      storeName: storeName.trim(),
       purchaseDate,
       paidBy: paidByUserId,
       paidByUserId,
       totalNzd: calculatedTotal,
       totalAmount: calculatedTotal,
-      items: validItems.length > 0 ? validItems : items,
+      items: cleanedItems,
     });
 
-    Alert.alert('保存完了', 'レシートデータを保存しました。', [
+    Alert.alert('Saved', 'The receipt has been added.', [
       {
         text: 'OK',
         onPress: () => {
@@ -85,19 +102,19 @@ export const ScanScreen: React.FC<ScanScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: currentTheme.bg }]}>
-      <Text style={styles.title}>Scan & Input Receipt</Text>
+    <ScrollView style={[styles.container, { backgroundColor: currentTheme.bg }]} contentContainerStyle={styles.contentContainer}>
+      <Text style={styles.title}>Add purchase</Text>
 
       <View style={styles.card}>
-        <Text style={styles.label}>Store Name (店舗名)</Text>
+        <Text style={styles.label}>Store name</Text>
         <TextInput
           style={styles.input}
-          placeholder="例: PAK'nSAVE, Woolworths..."
+          placeholder="e.g. PAK'nSAVE, Woolworths..."
           value={storeName}
           onChangeText={setStoreName}
         />
 
-        <Text style={styles.label}>Date (購入日)</Text>
+        <Text style={styles.label}>Purchase date</Text>
         <TextInput
           style={styles.input}
           placeholder="YYYY-MM-DD"
@@ -105,7 +122,7 @@ export const ScanScreen: React.FC<ScanScreenProps> = ({ navigation }) => {
           onChangeText={setPurchaseDate}
         />
 
-        <Text style={styles.label}>Paid By (支払者)</Text>
+        <Text style={styles.label}>Paid by</Text>
         <View style={styles.payerRow}>
           <TouchableOpacity
             style={[
@@ -144,54 +161,50 @@ export const ScanScreen: React.FC<ScanScreenProps> = ({ navigation }) => {
       </View>
 
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Items (購入品目)</Text>
+        <Text style={styles.sectionTitle}>Items</Text>
         <TouchableOpacity onPress={handleAddItem}>
-          <Text style={[styles.addBtnText, { color: currentTheme.primary }]}>+ 行を追加</Text>
+          <Text style={[styles.addBtnText, { color: currentTheme.primary }]}>+ Add item</Text>
         </TouchableOpacity>
       </View>
 
       {items.map((item, index) => (
-        <View key={index} style={styles.itemCard}>
+        <View key={item.id ?? index} style={styles.itemCard}>
           <View style={styles.itemHeader}>
             <Text style={styles.itemIndex}>Item #{index + 1}</Text>
             {items.length > 1 && (
               <TouchableOpacity onPress={() => handleRemoveItem(index)}>
-                <Text style={styles.removeText}>削除</Text>
+                <Text style={styles.removeText}>Remove</Text>
               </TouchableOpacity>
             )}
           </View>
 
           <TextInput
             style={styles.input}
-            placeholder="商品名 (例: Milk 2L)"
+            placeholder="Product name"
             value={item.name}
             onChangeText={(val) => handleUpdateItem(index, 'name', val)}
           />
 
           <View style={styles.priceRow}>
             <View style={{ flex: 1, marginRight: 8 }}>
-              <Text style={styles.subLabel}>単価 ($ NZD)</Text>
+              <Text style={styles.subLabel}>Unit price ($ NZD)</Text>
               <TextInput
                 style={styles.input}
                 placeholder="0.00"
                 keyboardType="decimal-pad"
                 value={item.price ? item.price.toString() : ''}
-                onChangeText={(val) =>
-                  handleUpdateItem(index, 'price', parseFloat(val) || 0)
-                }
+                onChangeText={(val) => handleUpdateItem(index, 'price', parseFloat(val) || 0)}
               />
             </View>
 
             <View style={{ width: 80 }}>
-              <Text style={styles.subLabel}>数量</Text>
+              <Text style={styles.subLabel}>Qty</Text>
               <TextInput
                 style={styles.input}
                 placeholder="1"
                 keyboardType="number-pad"
                 value={item.quantity ? item.quantity.toString() : '1'}
-                onChangeText={(val) =>
-                  handleUpdateItem(index, 'quantity', parseInt(val, 10) || 1)
-                }
+                onChangeText={(val) => handleUpdateItem(index, 'quantity', parseInt(val, 10) || 1)}
               />
             </View>
           </View>
@@ -199,17 +212,15 @@ export const ScanScreen: React.FC<ScanScreenProps> = ({ navigation }) => {
       ))}
 
       <View style={styles.totalCard}>
-        <Text style={styles.totalLabel}>Total Amount (合計):</Text>
-        <Text style={[styles.totalValue, { color: currentTheme.primary }]}>
-          ${calculatedTotal.toFixed(2)} NZD
-        </Text>
+        <Text style={styles.totalLabel}>Total:</Text>
+        <Text style={[styles.totalValue, { color: currentTheme.primary }]}>${calculatedTotal.toFixed(2)} NZD</Text>
       </View>
 
       <TouchableOpacity
         style={[styles.saveBtn, { backgroundColor: currentTheme.primary }]}
         onPress={handleSave}
       >
-        <Text style={styles.saveBtnText}>Save Transaction</Text>
+        <Text style={styles.saveBtnText}>Save transaction</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -217,20 +228,26 @@ export const ScanScreen: React.FC<ScanScreenProps> = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
-  title: { fontSize: 24, fontWeight: '700', marginBottom: 16, color: '#111' },
+  contentContainer: { paddingBottom: 32 },
+  title: { fontSize: 28, fontWeight: '800', marginBottom: 16, color: '#111' },
   card: {
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 20,
     borderWidth: 1,
     borderColor: '#eee',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   label: { fontSize: 13, fontWeight: '600', color: '#555', marginBottom: 6 },
   subLabel: { fontSize: 11, color: '#777', marginBottom: 4 },
   input: {
     backgroundColor: '#f4f4f5',
-    borderRadius: 8,
+    borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 15,
@@ -241,7 +258,7 @@ const styles = StyleSheet.create({
   payerBtn: {
     flex: 1,
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#ddd',
     alignItems: 'center',
@@ -258,7 +275,7 @@ const styles = StyleSheet.create({
   addBtnText: { fontSize: 14, fontWeight: '700' },
   itemCard: {
     backgroundColor: '#fff',
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 14,
     marginBottom: 10,
     borderWidth: 1,
@@ -287,7 +304,7 @@ const styles = StyleSheet.create({
   totalValue: { fontSize: 22, fontWeight: '800' },
   saveBtn: {
     paddingVertical: 14,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: 'center',
     marginBottom: 40,
   },

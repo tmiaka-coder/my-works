@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Transaction } from '../types';
+import { MAIN_CATEGORIES, Transaction } from '../types';
 
 export interface ThemeOption {
   id: string;
@@ -10,11 +10,19 @@ export interface ThemeOption {
 }
 
 export const NZ_THEMES: ThemeOption[] = [
-  { id: 'monochrome', name: 'NZ Black & White', primary: '#000000', bg: '#f9f9f9' },
-  { id: 'fern_green', name: 'Fern Green', primary: '#2D5A27', bg: '#F4F7F4' },
-  { id: 'lake_blue', name: 'Tekapo Blue', primary: '#1A5F7A', bg: '#F0F6F9' },
-  { id: 'warm_gold', name: 'Autumn Gold', primary: '#C87D55', bg: '#FAF6F0' },
+  { id: 'monochrome', name: 'Kauri Black', primary: '#111111', bg: '#f8f8f7' },
+  { id: 'fern_green', name: 'Kahikatea Green', primary: '#2D5A27', bg: '#F3F7F2' },
+  { id: 'lake_blue', name: 'Lake Tekapo', primary: '#1A5F7A', bg: '#EEF7FB' },
+  { id: 'warm_gold', name: 'Sunset Clay', primary: '#C87D55', bg: '#FBF5F0' },
 ];
+
+const DEFAULT_CATEGORY_BUDGETS = Object.values(MAIN_CATEGORIES).reduce(
+  (acc, category) => {
+    acc[category.id] = 0;
+    return acc;
+  },
+  {} as Record<string, number>
+);
 
 export interface ExpenseContextType {
   transactions: Transaction[];
@@ -27,6 +35,11 @@ export interface ExpenseContextType {
   setExchangeRate: (rate: number) => void;
   currentTheme: ThemeOption;
   setCurrentThemeId: (id: string) => void;
+  monthlyBudget: number;
+  setMonthlyBudget: (budget: number) => void;
+  categoryBudgets: Record<string, number>;
+  setCategoryBudget: (categoryId: string, budget: number) => void;
+  getPayerName: (payerId?: string) => string;
 }
 
 const ExpenseContext = createContext<ExpenseContextType | undefined>(undefined);
@@ -62,12 +75,23 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
   },
 ];
 
+const normalizePayerId = (payer?: string) => {
+  if (payer === 'user_01' || payer === 'user_02') return payer;
+  if (payer === 'user_1') return 'user_01';
+  if (payer === 'user_2') return 'user_02';
+  return 'user_01';
+};
+
 export const ExpenseProvider = ({ children }: { children: ReactNode }) => {
   const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
   const [user1Name, setUser1NameState] = useState<string>('User 1');
   const [user2Name, setUser2NameState] = useState<string>('User 2');
   const [exchangeRate, setExchangeRateState] = useState<number>(90.0);
-  const [themeId, setThemeId] = useState<string>('monochrome');
+  const [themeId, setThemeId] = useState<string>('lake_blue');
+  const [monthlyBudget, setMonthlyBudgetState] = useState<number>(2500);
+  const [categoryBudgets, setCategoryBudgetsState] = useState<Record<string, number>>(
+    DEFAULT_CATEGORY_BUDGETS
+  );
 
   useEffect(() => {
     const loadData = async () => {
@@ -80,6 +104,10 @@ export const ExpenseProvider = ({ children }: { children: ReactNode }) => {
           if (data.user2Name) setUser2NameState(data.user2Name);
           if (data.exchangeRate) setExchangeRateState(data.exchangeRate);
           if (data.themeId) setThemeId(data.themeId);
+          if (data.monthlyBudget != null) setMonthlyBudgetState(Number(data.monthlyBudget) || 0);
+          if (data.categoryBudgets) {
+            setCategoryBudgetsState({ ...DEFAULT_CATEGORY_BUDGETS, ...data.categoryBudgets });
+          }
         }
       } catch (e) {
         console.error('Failed to load data', e);
@@ -98,7 +126,7 @@ export const ExpenseProvider = ({ children }: { children: ReactNode }) => {
 
   const addTransaction = (tx: Omit<Transaction, 'id'>) => {
     const total = tx.totalNzd ?? tx.totalAmount ?? 0;
-    const payer = tx.paidBy ?? tx.paidByUserId ?? 'user_01';
+    const payer = normalizePayerId(tx.paidBy ?? tx.paidByUserId ?? 'user_01');
 
     const newTx: Transaction = {
       ...tx,
@@ -110,27 +138,53 @@ export const ExpenseProvider = ({ children }: { children: ReactNode }) => {
     };
     const updated = [newTx, ...transactions];
     setTransactions(updated);
-    saveData({ transactions: updated, user1Name, user2Name, exchangeRate, themeId });
+    saveData({
+      transactions: updated,
+      user1Name,
+      user2Name,
+      exchangeRate,
+      themeId,
+      monthlyBudget,
+      categoryBudgets,
+    });
   };
 
   const setUser1Name = (name: string) => {
     setUser1NameState(name);
-    saveData({ transactions, user1Name: name, user2Name, exchangeRate, themeId });
+    saveData({ transactions, user1Name: name, user2Name, exchangeRate, themeId, monthlyBudget, categoryBudgets });
   };
 
   const setUser2Name = (name: string) => {
     setUser2NameState(name);
-    saveData({ transactions, user1Name, user2Name: name, exchangeRate, themeId });
+    saveData({ transactions, user1Name, user2Name: name, exchangeRate, themeId, monthlyBudget, categoryBudgets });
   };
 
   const setExchangeRate = (rate: number) => {
     setExchangeRateState(rate);
-    saveData({ transactions, user1Name, user2Name, exchangeRate: rate, themeId });
+    saveData({ transactions, user1Name, user2Name, exchangeRate: rate, themeId, monthlyBudget, categoryBudgets });
   };
 
   const setCurrentThemeId = (id: string) => {
     setThemeId(id);
-    saveData({ transactions, user1Name, user2Name, exchangeRate, themeId: id });
+    saveData({ transactions, user1Name, user2Name, exchangeRate, themeId: id, monthlyBudget, categoryBudgets });
+  };
+
+  const setMonthlyBudget = (budget: number) => {
+    const safeBudget = Math.max(0, Number(budget) || 0);
+    setMonthlyBudgetState(safeBudget);
+    saveData({ transactions, user1Name, user2Name, exchangeRate, themeId, monthlyBudget: safeBudget, categoryBudgets });
+  };
+
+  const setCategoryBudget = (categoryId: string, budget: number) => {
+    const safeBudget = Math.max(0, Number(budget) || 0);
+    const nextBudgets = { ...categoryBudgets, [categoryId]: safeBudget };
+    setCategoryBudgetsState(nextBudgets);
+    saveData({ transactions, user1Name, user2Name, exchangeRate, themeId, monthlyBudget, categoryBudgets: nextBudgets });
+  };
+
+  const getPayerName = (payerId?: string) => {
+    const normalized = normalizePayerId(payerId ?? 'user_01');
+    return normalized === 'user_01' ? user1Name : user2Name;
   };
 
   const currentTheme = NZ_THEMES.find((t) => t.id === themeId) || NZ_THEMES[0];
@@ -148,6 +202,11 @@ export const ExpenseProvider = ({ children }: { children: ReactNode }) => {
         setExchangeRate,
         currentTheme,
         setCurrentThemeId,
+        monthlyBudget,
+        setMonthlyBudget,
+        categoryBudgets,
+        setCategoryBudget,
+        getPayerName,
       }}
     >
       {children}
