@@ -1,5 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import {
+  initializeExpenseDatabase,
+  loadExpenseData,
+  saveExpenseData,
+  getDefaultCategoryBudgets,
+} from '../database/expenseDb';
 import { MAIN_CATEGORIES, Transaction } from '../types';
 
 export interface ThemeOption {
@@ -16,13 +22,7 @@ export const NZ_THEMES: ThemeOption[] = [
   { id: 'warm_gold', name: 'Sunset Clay', primary: '#C87D55', bg: '#FBF5F0' },
 ];
 
-const DEFAULT_CATEGORY_BUDGETS = Object.values(MAIN_CATEGORIES).reduce(
-  (acc, category) => {
-    acc[category.id] = 0;
-    return acc;
-  },
-  {} as Record<string, number>
-);
+const DEFAULT_CATEGORY_BUDGETS = getDefaultCategoryBudgets();
 
 export interface ExpenseContextType {
   transactions: Transaction[];
@@ -43,8 +43,6 @@ export interface ExpenseContextType {
 }
 
 const ExpenseContext = createContext<ExpenseContextType | undefined>(undefined);
-
-const STORAGE_KEY = '@smart_budget_nz_data_v2';
 
 const INITIAL_TRANSACTIONS: Transaction[] = [
   {
@@ -96,29 +94,29 @@ export const ExpenseProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const jsonValue = await AsyncStorage.getItem(STORAGE_KEY);
-        if (jsonValue != null) {
-          const data = JSON.parse(jsonValue);
-          if (data.transactions && data.transactions.length > 0) setTransactions(data.transactions);
-          if (data.user1Name) setUser1NameState(data.user1Name);
-          if (data.user2Name) setUser2NameState(data.user2Name);
-          if (data.exchangeRate) setExchangeRateState(data.exchangeRate);
-          if (data.themeId) setThemeId(data.themeId);
-          if (data.monthlyBudget != null) setMonthlyBudgetState(Number(data.monthlyBudget) || 0);
-          if (data.categoryBudgets) {
-            setCategoryBudgetsState({ ...DEFAULT_CATEGORY_BUDGETS, ...data.categoryBudgets });
-          }
+        await initializeExpenseDatabase();
+        const data = loadExpenseData();
+
+        if (data.transactions && data.transactions.length > 0) setTransactions(data.transactions);
+        if (data.user1Name) setUser1NameState(data.user1Name);
+        if (data.user2Name) setUser2NameState(data.user2Name);
+        if (data.exchangeRate) setExchangeRateState(data.exchangeRate);
+        if (data.themeId) setThemeId(data.themeId);
+        if (data.monthlyBudget != null) setMonthlyBudgetState(Number(data.monthlyBudget) || 0);
+        if (data.categoryBudgets) {
+          setCategoryBudgetsState({ ...DEFAULT_CATEGORY_BUDGETS, ...data.categoryBudgets });
         }
       } catch (e) {
         console.error('Failed to load data', e);
       }
     };
+
     loadData();
   }, []);
 
   const saveData = async (updatedData: any) => {
     try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedData));
+      await saveExpenseData(updatedData);
     } catch (e) {
       console.error('Failed to save data', e);
     }
