@@ -1,7 +1,12 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { useExpenses } from '../context/ExpenseContext';
 import { MAIN_CATEGORIES } from '../types';
+
+const getMonthKey = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+const getTransactionMonthKey = (purchaseDate: string) => purchaseDate.slice(0, 7);
 
 interface HomeScreenProps {
   navigation?: any;
@@ -19,9 +24,31 @@ export const HomeScreen: React.FC<HomeScreenProps> = () => {
     getPayerName,
   } = useExpenses();
 
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const currentMonth = new Date();
+    return new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+  });
+  const currentMonth = new Date();
+  const selectedMonthKey = getMonthKey(selectedMonth);
+  const isCurrentMonth = selectedMonthKey === getMonthKey(currentMonth);
+  const selectedMonthLabel = selectedMonth.toLocaleString('en-US', {
+    month: 'long',
+    year: 'numeric',
+  });
+  const daysInSelectedMonth = new Date(
+    selectedMonth.getFullYear(),
+    selectedMonth.getMonth() + 1,
+    0
+  ).getDate();
+  const daysToCount = isCurrentMonth ? Math.min(currentMonth.getDate(), daysInSelectedMonth) : daysInSelectedMonth;
+  const selectedMonthTransactions = useMemo(
+    () => transactions.filter((tx) => getTransactionMonthKey(tx.purchaseDate) === selectedMonthKey),
+    [transactions, selectedMonthKey]
+  );
+
   const totalNzd = useMemo(
-    () => transactions.reduce((sum, tx) => sum + (tx.totalNzd ?? tx.totalAmount ?? 0), 0),
-    [transactions]
+    () => selectedMonthTransactions.reduce((sum, tx) => sum + (tx.totalNzd ?? tx.totalAmount ?? 0), 0),
+    [selectedMonthTransactions]
   );
 
   const categoryTotals = useMemo(() => {
@@ -30,7 +57,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = () => {
       totals[cat.id] = 0;
     });
 
-    transactions.forEach((tx) => {
+    selectedMonthTransactions.forEach((tx) => {
       if (tx.items && tx.items.length > 0) {
         tx.items.forEach((item) => {
           const catId = item.mainCategoryId || 'other';
@@ -44,22 +71,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = () => {
     });
 
     return totals;
-  }, [transactions]);
+  }, [selectedMonthTransactions]);
 
   const monthTrend = useMemo(() => {
     const rolling: Array<{ label: string; spent: number; budget: number }> = [];
     for (let i = 5; i >= 0; i -= 1) {
-      const monthDate = new Date();
-      monthDate.setDate(1);
-      monthDate.setMonth(monthDate.getMonth() - i);
+      const monthDate = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - i, 1);
 
       const label = monthDate.toLocaleString('en-US', { month: 'short' });
-      const key = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
+      const key = getMonthKey(monthDate);
 
       const spent = transactions.reduce((sum, tx) => {
         if (!tx.purchaseDate) return sum;
-        const txDate = new Date(tx.purchaseDate);
-        const txKey = `${txDate.getFullYear()}-${String(txDate.getMonth() + 1).padStart(2, '0')}`;
+        const txKey = getTransactionMonthKey(tx.purchaseDate);
         if (txKey !== key) return sum;
         return sum + (tx.totalNzd ?? tx.totalAmount ?? 0);
       }, 0);
@@ -67,19 +91,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = () => {
       rolling.push({ label, spent, budget: monthlyBudget });
     }
     return rolling;
-  }, [transactions, monthlyBudget]);
+  }, [transactions, monthlyBudget, selectedMonth]);
 
   const monthlyMax = Math.max(...monthTrend.map((month) => Math.max(month.spent, month.budget, 1)), 1);
   const totalJpy = Math.round(totalNzd * exchangeRate);
   const remainingBudget = monthlyBudget > 0 ? monthlyBudget - totalNzd : 0;
   const budgetPercent = monthlyBudget > 0 ? Math.min((totalNzd / monthlyBudget) * 100, 100) : 0;
-  const avgDailySpend = totalNzd > 0 ? totalNzd / Math.max(new Date().getDate(), 1) : 0;
+  const avgDailySpend = totalNzd > 0 ? totalNzd / Math.max(daysToCount, 1) : 0;
 
-  const user1Total = transactions
+  const user1Total = selectedMonthTransactions
     .filter((tx) => (tx.paidBy ?? tx.paidByUserId) === 'user_01')
     .reduce((sum, tx) => sum + (tx.totalNzd ?? tx.totalAmount ?? 0), 0);
 
-  const user2Total = transactions
+  const user2Total = selectedMonthTransactions
     .filter((tx) => (tx.paidBy ?? tx.paidByUserId) === 'user_02')
     .reduce((sum, tx) => sum + (tx.totalNzd ?? tx.totalAmount ?? 0), 0);
 
@@ -89,7 +113,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = () => {
       spent: categoryTotals[cat.id] || 0,
       budget: categoryBudgets[cat.id] || 0,
     }))
-    .filter((cat) => cat.spent > 0 || cat.budget > 0)
+    .filter((cat) => cat.spent > 0 || (isCurrentMonth && cat.budget > 0))
     .sort((a, b) => b.spent - a.spent);
 
   const topCategory = categorySummary[0];
@@ -97,16 +121,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = () => {
   const monthCompareKeys = useMemo(() => {
     const keys: Array<{ key: string; label: string }> = [];
     for (let i = 2; i >= 0; i -= 1) {
-      const monthDate = new Date();
-      monthDate.setDate(1);
-      monthDate.setMonth(monthDate.getMonth() - i);
+      const monthDate = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - i, 1);
       keys.push({
-        key: `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`,
+        key: getMonthKey(monthDate),
         label: monthDate.toLocaleString('en-US', { month: 'short' }),
       });
     }
     return keys;
-  }, []);
+  }, [selectedMonth]);
 
   const categoryMonthComparison = useMemo(() => {
     return Object.values(MAIN_CATEGORIES)
@@ -114,8 +136,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = () => {
         const months = monthCompareKeys.map(({ key, label }) => {
           const spent = transactions.reduce((sum, tx) => {
             if (!tx.purchaseDate) return sum;
-            const txDate = new Date(tx.purchaseDate);
-            const txKey = `${txDate.getFullYear()}-${String(txDate.getMonth() + 1).padStart(2, '0')}`;
+            const txKey = getTransactionMonthKey(tx.purchaseDate);
             if (txKey !== key) return sum;
             if (!tx.items || tx.items.length === 0) return sum + (tx.totalNzd ?? tx.totalAmount ?? 0);
             return sum + tx.items
@@ -142,9 +163,39 @@ export const HomeScreen: React.FC<HomeScreenProps> = () => {
     <ScrollView style={[styles.container, { backgroundColor: currentTheme.bg }]} contentContainerStyle={styles.contentContainer}>
       <Text style={styles.title}>Overview</Text>
 
+      <View style={styles.monthSelector}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Previous month"
+          style={styles.monthArrow}
+          onPress={() =>
+            setSelectedMonth(
+              (month) => new Date(month.getFullYear(), month.getMonth() - 1, 1)
+            )
+          }
+        >
+          <Text style={styles.monthArrowText}>‹</Text>
+        </Pressable>
+        <Text style={styles.selectedMonth}>{selectedMonthLabel}</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Next month"
+          accessibilityState={{ disabled: isCurrentMonth }}
+          disabled={isCurrentMonth}
+          style={[styles.monthArrow, isCurrentMonth && styles.monthArrowDisabled]}
+          onPress={() =>
+            setSelectedMonth(
+              (month) => new Date(month.getFullYear(), month.getMonth() + 1, 1)
+            )
+          }
+        >
+          <Text style={[styles.monthArrowText, isCurrentMonth && styles.monthArrowTextDisabled]}>›</Text>
+        </Pressable>
+      </View>
+
       <View style={[styles.heroCard, { borderColor: currentTheme.primary }]}>
         <View style={styles.heroHeader}>
-          <Text style={styles.cardLabel}>This month</Text>
+          <Text style={styles.cardLabel}>{isCurrentMonth ? 'This month' : selectedMonthLabel}</Text>
           <Text style={styles.pill}>${monthlyBudget.toFixed(0)} budget</Text>
         </View>
         <Text style={[styles.totalAmount, { color: currentTheme.primary }]}>${totalNzd.toFixed(2)} NZD</Text>
@@ -194,7 +245,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = () => {
       )}
 
       <View style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>Monthly trend</Text>
+        <Text style={styles.sectionTitle}>Monthly trend through {selectedMonth.toLocaleString('en-US', { month: 'short' })}</Text>
         <View style={styles.chartWrap}>
           {monthTrend.map((month) => {
             const spentHeight = Math.max(18, (month.spent / monthlyMax) * 110);
@@ -216,7 +267,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = () => {
 
       <View style={styles.sectionCard}>
         <Text style={styles.sectionTitle}>Category by month</Text>
-        <Text style={styles.chartSubtitle}>Compare spending across the last 3 months</Text>
+        <Text style={styles.chartSubtitle}>Compare spending across the 3 months through {selectedMonthLabel}</Text>
         {categoryMonthComparison.slice(0, 6).map((category) => (
           <View key={category.id} style={styles.categoryTrendRow}>
             <Text style={styles.categoryTrendLabel}>{category.label}</Text>
@@ -259,11 +310,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = () => {
       </View>
 
       <View style={styles.recentSection}>
-        <Text style={styles.sectionTitle}>Recent transactions</Text>
-        {transactions.length === 0 ? (
-          <Text style={styles.emptyText}>No transactions yet.</Text>
+        <Text style={styles.sectionTitle}>Recent transactions · {selectedMonthLabel}</Text>
+        {selectedMonthTransactions.length === 0 ? (
+          <Text style={styles.emptyText}>No transactions for this month yet.</Text>
         ) : (
-          transactions.slice(0, 5).map((tx) => {
+          selectedMonthTransactions.slice(0, 5).map((tx) => {
             const amount = tx.totalNzd ?? tx.totalAmount ?? 0;
             const payer = getPayerName(tx.paidBy ?? tx.paidByUserId);
             return (
@@ -289,6 +340,26 @@ const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
   contentContainer: { paddingBottom: 32 },
   title: { fontSize: 30, fontWeight: '800', marginBottom: 16, color: '#101828' },
+  monthSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    alignSelf: 'center',
+    width: 240,
+    marginBottom: 18,
+  },
+  monthArrow: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    backgroundColor: '#fff',
+  },
+  monthArrowDisabled: { backgroundColor: '#F3F4F6' },
+  monthArrowText: { fontSize: 30, lineHeight: 34, color: '#1f2937' },
+  monthArrowTextDisabled: { color: '#c4c8ce' },
+  selectedMonth: { fontSize: 17, fontWeight: '700', color: '#1f2937' },
   heroCard: {
     backgroundColor: '#fff',
     borderRadius: 22,
