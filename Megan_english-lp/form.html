@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Megan Englishの無料体験レッスン予約・お問い合わせフォームです。">
+    <title>無料体験・お問い合わせ | Megan English</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        forest: '#244c3a',
+                        leaf: '#6f9f71',
+                        mint: '#edf5e9',
+                        cream: '#fbfcf8',
+                    },
+                    fontFamily: {
+                        sans: ['DM Sans', 'Noto Sans JP', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        soft: '0 20px 60px rgba(36, 76, 58, 0.10)',
+                    },
+                },
+            },
+        };
+    </script>
+</head>
+<body class="min-h-screen bg-cream font-sans text-slate-700 antialiased">
+    <header class="border-b border-forest/5 bg-white">
+        <div class="mx-auto max-w-7xl px-5 py-5 lg:px-8">
+            <a href="index.html" class="text-xl font-extrabold tracking-tight text-forest">Megan <span class="text-leaf">English</span></a>
+        </div>
+    </header>
+
+    <main class="px-5 py-12 sm:py-16">
+        <div class="mx-auto max-w-2xl">
+            <div class="mb-8 text-center">
+                <p class="text-sm font-extrabold uppercase tracking-[0.2em] text-leaf">Let's talk</p>
+                <h1 class="mt-3 text-3xl font-black text-forest sm:text-4xl">無料体験・お問い合わせ</h1>
+                <p class="mt-4 leading-7 text-slate-600">ご希望の内容を入力してください。レッスンのご質問だけでもお気軽にどうぞ。</p>
+            </div>
+
+            <div class="rounded-3xl border border-forest/5 bg-white p-6 shadow-soft sm:p-10">
+                <form action="#" method="get" class="space-y-6">
+                    <div>
+                        <label for="name" class="mb-2 block text-sm font-bold text-forest">お名前 <span class="text-rose-600" aria-label="必須">*</span></label>
+                        <input type="text" id="name" name="name" autocomplete="name" placeholder="山田 花子" required class="w-full rounded-xl border border-slate-200 bg-cream px-4 py-3.5 outline-none transition placeholder:text-slate-400 focus:border-leaf focus:ring-4 focus:ring-leaf/10">
+                    </div>
+                    <div>
+                        <label for="email" class="mb-2 block text-sm font-bold text-forest">メールアドレス <span class="text-rose-600" aria-label="必須">*</span></label>
+                        <input type="email" id="email" name="email" autocomplete="email" placeholder="you@example.com" required class="w-full rounded-xl border border-slate-200 bg-cream px-4 py-3.5 outline-none transition placeholder:text-slate-400 focus:border-leaf focus:ring-4 focus:ring-leaf/10">
+                    </div>
+                    <div>
+                        <label for="datetime" class="mb-2 block text-sm font-bold text-forest">ご希望の日時</label>
+                        <input type="datetime-local" id="datetime" name="datetime" class="w-full rounded-xl border border-slate-200 bg-cream px-4 py-3.5 outline-none transition focus:border-leaf focus:ring-4 focus:ring-leaf/10">
+                        <p class="mt-2 text-xs text-slate-500">候補が複数ある場合は、メッセージ欄にご記入ください。</p>
+                    </div>
+                    <div>
+                        <label for="message" class="mb-2 block text-sm font-bold text-forest">メッセージ</label>
+                        <textarea id="message" name="message" rows="5" placeholder="体験レッスンの希望や、ご質問などをご記入ください。" class="w-full resize-y rounded-xl border border-slate-200 bg-cream px-4 py-3.5 outline-none transition placeholder:text-slate-400 focus:border-leaf focus:ring-4 focus:ring-leaf/10"></textarea>
+                    </div>
+                    <button type="submit" class="w-full rounded-full bg-forest px-6 py-4 font-extrabold text-white transition hover:bg-leaf focus:outline-none focus:ring-4 focus:ring-leaf/20">入力内容を送信する <span aria-hidden="true">→</span></button>
+                    <p class="text-center text-xs leading-6 text-slate-500">このフォームはページ見本です。送信機能は設定されていないため、入力内容は送信・保存されません。</p>
+                </form>
+            </div>
+
+            <p class="mt-8 text-center">
+                <a href="index.html" class="text-sm font-bold text-forest underline decoration-leaf/50 underline-offset-4 transition hover:text-leaf">← トップページに戻る</a>
+            </p>
+        </div>
+    </main>
+
+    <footer class="py-8 text-center text-xs text-slate-400">&copy; 2026 Megan English</footer>
+</body>
+</html>
