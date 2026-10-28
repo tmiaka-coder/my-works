@@ -8,22 +8,20 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&family=Noto+Serif+JP:wght@400;500;600&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        forest: '#244c3a',
-                        leaf: '#6f9f71',
-                        mint: '#edf5e9',
-                        cream: '#fbfcf8',
+                        forest: '#34483b',
+                        leaf: '#788a70',
+                        mint: '#edf0e9',
+                        cream: '#f8f8f4',
                     },
                     fontFamily: {
                         sans: ['DM Sans', 'Noto Sans JP', 'sans-serif'],
-                    },
-                    boxShadow: {
-                        soft: '0 20px 60px rgba(36, 76, 58, 0.10)',
+                        display: ['Noto Serif JP', 'serif'],
                     },
                 },
             },
@@ -31,175 +29,156 @@
     </script>
 </head>
 <body class="bg-cream font-sans text-slate-700 antialiased">
-    <header class="sticky top-0 z-30 border-b border-forest/5 bg-white/90 backdrop-blur">
-        <nav class="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 lg:px-8" aria-label="メインナビゲーション">
-            <a href="#top" class="text-xl font-extrabold tracking-tight text-forest">Megan <span class="text-leaf">English</span></a>
-            <div class="hidden items-center gap-8 text-sm font-semibold text-slate-600 md:flex">
-                <a href="#features" class="transition hover:text-forest">選ばれる理由</a>
-                <a href="#lesson" class="transition hover:text-forest">レッスン・料金</a>
+    <header class="border-b border-forest/10 bg-cream">
+        <nav class="mx-auto flex max-w-7xl items-center justify-between px-5 py-5 lg:px-10" aria-label="メインナビゲーション">
+            <a href="#top" class="text-lg font-semibold tracking-tight text-forest">Megan <span class="font-normal text-leaf">English</span></a>
+            <div class="hidden items-center gap-9 text-sm text-slate-600 md:flex">
+                <a href="#features" class="transition hover:text-forest">レッスンの特徴</a>
+                <a href="#lesson" class="transition hover:text-forest">料金</a>
                 <a href="#teacher" class="transition hover:text-forest">講師紹介</a>
             </div>
-            <a href="form.html" class="rounded-full bg-forest px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-leaf">無料体験を予約</a>
+            <a href="form.html" class="border-b border-forest pb-1 text-sm font-semibold text-forest transition hover:border-leaf hover:text-leaf">無料体験を予約 <span aria-hidden="true">↗</span></a>
         </nav>
     </header>
 
     <main>
-        <section id="top" class="relative overflow-hidden">
-            <div class="absolute -right-36 -top-32 h-96 w-96 rounded-full bg-mint"></div>
-            <div class="relative mx-auto grid max-w-7xl items-center gap-12 px-5 py-16 md:py-24 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:py-28">
+        <section id="top" class="overflow-hidden">
+            <div class="mx-auto grid max-w-7xl items-center gap-12 px-5 py-16 md:py-24 lg:grid-cols-[1.05fr_0.95fr] lg:px-10 lg:py-28">
                 <div class="max-w-2xl">
-                    <p class="mb-6 inline-flex items-center gap-2 rounded-full bg-mint px-4 py-2 text-sm font-bold text-forest">
-                        <span class="h-2 w-2 rounded-full bg-leaf"></span>
-                        大人のためのマンツーマンオンライン英会話
-                    </p>
-                    <h1 class="text-4xl font-black leading-[1.45] tracking-tight text-forest sm:text-5xl lg:text-6xl">
+                    <p class="mb-7 text-xs font-semibold tracking-[0.16em] text-leaf">大人のためのオンライン英会話</p>
+                    <h1 class="font-display text-4xl font-medium leading-[1.55] tracking-tight text-forest sm:text-5xl lg:text-6xl">
                         勉強する英語から、<br>
-                        <span class="relative inline-block text-leaf">話せる英語へ。</span>
+                        <span class="text-leaf">話せる英語へ。</span>
                     </h1>
-                    <p class="mt-7 max-w-xl text-base leading-8 text-slate-600 sm:text-lg">
-                        間違えても大丈夫。あなたのペースで、一言ずつ。<br class="hidden sm:block">
-                        英語を話す自信を、毎日の小さな会話から育てます。
+                    <p class="mt-7 max-w-lg text-base leading-8 text-slate-600">
+                        言葉に詰まっても、間違えても大丈夫。<br class="hidden sm:block">
+                        あなたのペースで、英語を話す時間を重ねていきます。
                     </p>
-                    <div class="mt-9 flex flex-col gap-3 sm:flex-row">
-                        <a href="form.html" class="inline-flex items-center justify-center gap-2 rounded-full bg-forest px-7 py-4 font-bold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-leaf">
-                            無料体験レッスンを予約 <span aria-hidden="true">→</span>
+                    <div class="mt-9 flex flex-col items-start gap-5 sm:flex-row sm:items-center">
+                        <a href="form.html" class="inline-flex items-center justify-center gap-3 bg-forest px-6 py-4 text-sm font-semibold text-white transition hover:bg-leaf">
+                            無料体験レッスンを予約 <span aria-hidden="true">↗</span>
                         </a>
-                        <a href="#lesson" class="inline-flex items-center justify-center rounded-full border border-forest/15 bg-white px-7 py-4 font-bold text-forest transition hover:border-leaf">レッスンを見る</a>
+                        <a href="#lesson" class="text-sm font-medium text-forest underline decoration-forest/30 underline-offset-4 transition hover:decoration-leaf">料金を見る</a>
                     </div>
-                    <div class="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-sm font-medium text-slate-500">
-                        <span class="flex items-center gap-2"><span class="text-leaf">✓</span>初心者・ブランク歓迎</span>
-                        <span class="flex items-center gap-2"><span class="text-leaf">✓</span>オンラインで完結</span>
-                        <span class="flex items-center gap-2"><span class="text-leaf">✓</span>1回25分から</span>
+                    <div class="mt-8 flex flex-wrap gap-x-5 gap-y-2 text-xs text-slate-500">
+                        <span>初心者・ブランク歓迎</span>
+                        <span aria-hidden="true">／</span>
+                        <span>オンライン</span>
+                        <span aria-hidden="true">／</span>
+                        <span>1回25分から</span>
                     </div>
                 </div>
-                <div class="relative mx-auto w-full max-w-xl">
-                    <div class="absolute -left-5 top-10 z-10 rounded-2xl bg-white px-5 py-4 shadow-soft sm:-left-10">
-                        <p class="text-xs font-bold uppercase tracking-widest text-leaf">Your pace, your voice</p>
-                        <p class="mt-1 text-sm font-bold text-forest">一人ひとりに合わせた会話練習</p>
-                    </div>
-                    <img src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1200&q=85" alt="オンラインで英会話を楽しむ人たち" class="h-[390px] w-full rounded-[2rem] object-cover shadow-soft sm:h-[500px]">
-                    <div class="absolute -bottom-5 right-4 rounded-2xl bg-white px-5 py-4 shadow-soft sm:right-8">
-                        <p class="text-2xl font-black text-forest">25<span class="text-base"> min</span></p>
-                        <p class="text-xs font-medium text-slate-500">忙しい日にも続けやすい</p>
-                    </div>
+                <div class="w-full">
+                    <img src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1200&q=85" alt="オンラインで英会話を楽しむ人たち" class="h-[360px] w-full object-cover sm:h-[470px]">
+                    <p class="mt-3 text-right text-xs tracking-wide text-slate-500">A little conversation, a little more confidence.</p>
                 </div>
             </div>
         </section>
 
-        <section class="bg-white py-20 sm:py-24">
-            <div class="mx-auto max-w-5xl px-5 text-center">
-                <p class="text-sm font-extrabold uppercase tracking-[0.2em] text-leaf">Sound familiar?</p>
-                <h2 class="mt-4 text-3xl font-black leading-snug text-forest sm:text-4xl">英語を学んできたのに、<br class="sm:hidden">話すとなると言葉が出てこない。</h2>
-                <p class="mx-auto mt-5 max-w-2xl leading-8 text-slate-600">そんな経験はありませんか？ 仕事や旅行で使いたい気持ちはあるのに、間違えるのが怖くて話せない。Megan Englishは、そんな大人のためのレッスンです。</p>
-                <div class="mt-10 grid gap-4 text-left sm:grid-cols-3">
-                    <div class="rounded-2xl bg-cream p-6"><span class="text-2xl" aria-hidden="true">💭</span><p class="mt-4 font-bold text-forest">単語は知っているのに、会話で使えない</p></div>
-                    <div class="rounded-2xl bg-cream p-6"><span class="text-2xl" aria-hidden="true">😟</span><p class="mt-4 font-bold text-forest">間違いが気になって、話し始められない</p></div>
-                    <div class="rounded-2xl bg-cream p-6"><span class="text-2xl" aria-hidden="true">⏰</span><p class="mt-4 font-bold text-forest">忙しくて、学習がなかなか続かない</p></div>
+        <section class="border-y border-forest/10 bg-white py-20 sm:py-24">
+            <div class="mx-auto max-w-6xl px-5 lg:px-10">
+                <div class="grid gap-8 md:grid-cols-[0.9fr_1.1fr] md:items-end">
+                    <div>
+                        <p class="text-xs font-semibold tracking-[0.16em] text-leaf">こんな経験はありませんか</p>
+                        <h2 class="mt-4 font-display text-3xl font-medium leading-relaxed text-forest sm:text-4xl">知っている英語が、<br>会話になると出てこない。</h2>
+                    </div>
+                    <p class="max-w-xl leading-8 text-slate-600">仕事や旅行で英語を使いたい。けれど、間違えるのが気になって言葉が止まってしまう。そんな大人のために、安心して話せる時間をつくります。</p>
                 </div>
-                <p class="mt-8 font-bold text-leaf">その悩み、話す練習で少しずつ変えていきましょう。</p>
+                <div class="mt-10 grid border-y border-forest/10 sm:grid-cols-3">
+                    <p class="border-b border-forest/10 py-5 text-sm text-forest sm:border-b-0 sm:pr-5">単語は知っているのに、会話で使えない</p>
+                    <p class="border-b border-forest/10 py-5 text-sm text-forest sm:border-b-0 sm:border-l sm:px-5">間違いが気になって、話し始められない</p>
+                    <p class="py-5 text-sm text-forest sm:border-l sm:pl-5">忙しくて、学習がなかなか続かない</p>
+                </div>
             </div>
         </section>
 
         <section id="features" class="py-20 sm:py-24">
-            <div class="mx-auto max-w-7xl px-5 lg:px-8">
-                <div class="mx-auto max-w-2xl text-center">
-                    <p class="text-sm font-extrabold uppercase tracking-[0.2em] text-leaf">Why Megan English</p>
-                    <h2 class="mt-4 text-3xl font-black text-forest sm:text-4xl">話す自信が育つ、3つの理由</h2>
-                    <p class="mt-4 leading-7 text-slate-600">「わかる」を「話せる」に変えるために、レッスンの時間も内容もあなたに合わせます。</p>
+            <div class="mx-auto max-w-7xl px-5 lg:px-10">
+                <div class="max-w-2xl">
+                    <p class="text-xs font-semibold tracking-[0.16em] text-leaf">Megan Englishのレッスン</p>
+                    <h2 class="mt-4 font-display text-3xl font-medium text-forest sm:text-4xl">自分の言葉で話すために。</h2>
+                    <p class="mt-4 leading-7 text-slate-600">「わかる」を「話せる」に変えるために、内容もペースも一人ひとりに合わせます。</p>
                 </div>
-                <div class="mt-12 grid gap-6 md:grid-cols-3">
-                    <article class="rounded-3xl border border-forest/5 bg-white p-8 shadow-sm">
-                        <p class="text-sm font-extrabold text-leaf">01 / YOUR GOALS</p>
-                        <h3 class="mt-5 text-xl font-extrabold text-forest">あなたの目的から始める</h3>
-                        <p class="mt-3 leading-7 text-slate-600">仕事、旅行、日常会話。使いたい場面に合わせて、無理なく実践的な会話を練習します。</p>
+                <div class="mt-12 grid gap-8 md:grid-cols-3">
+                    <article class="border-t border-forest/30 pt-5">
+                        <p class="text-xs font-medium tracking-widest text-leaf">01</p>
+                        <h3 class="mt-4 text-lg font-semibold text-forest">目的に合わせて話す</h3>
+                        <p class="mt-3 text-sm leading-7 text-slate-600">仕事、旅行、日常会話。使いたい場面に合わせて、実践的な会話を練習します。</p>
                     </article>
-                    <article class="rounded-3xl border border-forest/5 bg-white p-8 shadow-sm">
-                        <p class="text-sm font-extrabold text-leaf">02 / SAFE SPACE</p>
-                        <h3 class="mt-5 text-xl font-extrabold text-forest">間違いを歓迎する雰囲気</h3>
-                        <p class="mt-3 leading-7 text-slate-600">完璧な英語より、伝えようとする気持ちを大切に。安心して何度でも言い直せます。</p>
+                    <article class="border-t border-forest/30 pt-5">
+                        <p class="text-xs font-medium tracking-widest text-leaf">02</p>
+                        <h3 class="mt-4 text-lg font-semibold text-forest">安心して試せる</h3>
+                        <p class="mt-3 text-sm leading-7 text-slate-600">完璧さより、伝えようとする気持ちを大切に。何度でも言い直せるレッスンです。</p>
                     </article>
-                    <article class="rounded-3xl border border-forest/5 bg-white p-8 shadow-sm">
-                        <p class="text-sm font-extrabold text-leaf">03 / SMALL STEPS</p>
-                        <h3 class="mt-5 text-xl font-extrabold text-forest">忙しくても続けやすい</h3>
-                        <p class="mt-3 leading-7 text-slate-600">1回25分からオンラインで受講。短い時間でも「話せた」という実感を積み重ねます。</p>
+                    <article class="border-t border-forest/30 pt-5">
+                        <p class="text-xs font-medium tracking-widest text-leaf">03</p>
+                        <h3 class="mt-4 text-lg font-semibold text-forest">25分から、無理なく</h3>
+                        <p class="mt-3 text-sm leading-7 text-slate-600">オンラインで受講できるので、忙しい日々の中でも続けやすいレッスンです。</p>
                     </article>
                 </div>
             </div>
         </section>
 
-        <section id="teacher" class="bg-mint/70 py-20 sm:py-24">
-            <div class="mx-auto grid max-w-6xl items-center gap-12 px-5 md:grid-cols-[0.8fr_1.2fr] lg:px-8">
-                <div class="relative mx-auto w-full max-w-sm">
-                    <div class="absolute -left-4 -top-4 h-full w-full rounded-[2rem] border-2 border-leaf/30"></div>
-                    <img src="https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=900&q=85" alt="笑顔で会話をする講師" class="relative h-[380px] w-full rounded-[2rem] object-cover shadow-soft">
-                    <div class="absolute -bottom-5 -right-4 rounded-2xl bg-white px-5 py-4 shadow-soft">
-                        <p class="text-xs font-bold uppercase tracking-widest text-leaf">Your teacher</p>
-                        <p class="mt-1 text-lg font-black text-forest">Megan</p>
-                    </div>
+        <section id="teacher" class="border-y border-forest/10 bg-mint py-20 sm:py-24">
+            <div class="mx-auto grid max-w-6xl items-center gap-12 px-5 md:grid-cols-[0.8fr_1.2fr] lg:px-10">
+                <div class="mx-auto w-full max-w-sm">
+                    <img src="https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=900&q=85" alt="笑顔で会話をする講師" class="h-[380px] w-full object-cover">
+                    <p class="mt-3 text-right text-xs tracking-wide text-slate-500">Megan / English teacher</p>
                 </div>
                 <div class="pt-4">
-                    <p class="text-sm font-extrabold uppercase tracking-[0.2em] text-leaf">Meet your teacher</p>
-                    <h2 class="mt-4 text-3xl font-black text-forest sm:text-4xl">学びに寄り添う、<br>経験豊富な講師と。</h2>
+                    <p class="text-xs font-semibold tracking-[0.16em] text-leaf">講師紹介</p>
+                    <h2 class="mt-4 font-display text-3xl font-medium text-forest sm:text-4xl">Meganと一緒に、<br>一歩ずつ。</h2>
                     <p class="mt-6 leading-8 text-slate-600">CELTA（英語教授法資格）と教育学修士を持つ講師が、一人ひとりの目標やペースに合わせてレッスンを進めます。日本でのALT経験に加え、社会人向けの英語指導経験もあります。</p>
                     <p class="mt-4 leading-8 text-slate-600">英語に自信がなくても大丈夫。あなたの「伝えたい」を一緒に見つけ、自然な表現へつなげていきます。</p>
-                    <div class="mt-7 flex flex-wrap gap-3">
-                        <span class="rounded-full bg-white px-4 py-2 text-sm font-bold text-forest">CELTA</span>
-                        <span class="rounded-full bg-white px-4 py-2 text-sm font-bold text-forest">教育学修士</span>
-                        <span class="rounded-full bg-white px-4 py-2 text-sm font-bold text-forest">日本でのALT経験</span>
-                        <span class="rounded-full bg-white px-4 py-2 text-sm font-bold text-forest">大人向け指導経験</span>
-                    </div>
+                    <p class="mt-7 border-t border-forest/15 pt-5 text-sm leading-7 text-forest">CELTA ／ 教育学修士 ／ 日本でのALT・社会人向け指導経験</p>
                 </div>
             </div>
         </section>
 
         <section id="lesson" class="bg-white py-20 sm:py-24">
             <div class="mx-auto max-w-7xl px-5 lg:px-8">
-                <div class="mx-auto max-w-2xl text-center">
-                    <p class="text-sm font-extrabold uppercase tracking-[0.2em] text-leaf">Lessons & pricing</p>
-                    <h2 class="mt-4 text-3xl font-black text-forest sm:text-4xl">今のあなたに合うレッスンを</h2>
-                    <p class="mt-4 leading-7 text-slate-600">毎回のテーマは相談しながら決められます。まずは気軽にお試しください。</p>
+                <div class="max-w-2xl">
+                    <p class="text-xs font-semibold tracking-[0.16em] text-leaf">レッスン・料金</p>
+                    <h2 class="mt-4 font-display text-3xl font-medium text-forest sm:text-4xl">続けやすい時間と料金で。</h2>
+                    <p class="mt-4 leading-7 text-slate-600">毎回のテーマは相談しながら決められます。まずは体験レッスンでお話ししましょう。</p>
                 </div>
-                <div class="mx-auto mt-12 grid max-w-4xl gap-6 md:grid-cols-2">
-                    <article class="rounded-3xl border border-forest/10 bg-cream p-8">
-                        <p class="text-sm font-extrabold text-leaf">START HERE</p>
-                        <h3 class="mt-3 text-2xl font-black text-forest">無料体験レッスン</h3>
-                        <p class="mt-2 leading-7 text-slate-600">目標や現在のレベルをお聞きしながら、レッスンの雰囲気を体験できます。</p>
-                        <p class="mt-6 text-3xl font-black text-forest">無料 <span class="text-sm font-medium text-slate-500">/ 1回</span></p>
-                        <a href="form.html" class="mt-7 inline-flex w-full items-center justify-center rounded-full border border-forest px-6 py-3 font-bold text-forest transition hover:bg-mint">体験を予約する →</a>
+                <div class="mt-10 max-w-4xl border-y border-forest/15">
+                    <article class="grid gap-5 py-7 md:grid-cols-[1fr_auto_1.2fr_auto] md:items-center">
+                        <h3 class="text-lg font-semibold text-forest">無料体験レッスン</h3>
+                        <p class="text-2xl font-medium text-forest">無料 <span class="text-sm text-slate-500">/ 1回</span></p>
+                        <p class="text-sm leading-7 text-slate-600">目標や現在のレベルを伺いながら、レッスンを体験いただけます。</p>
+                        <a href="form.html" class="text-sm font-semibold text-forest underline decoration-forest/30 underline-offset-4 transition hover:text-leaf">体験を予約 ↗</a>
                     </article>
-                    <article class="relative rounded-3xl bg-forest p-8 text-white shadow-soft">
-                        <span class="absolute right-6 top-6 rounded-full bg-white/15 px-3 py-1 text-xs font-bold">オンライン</span>
-                        <p class="text-sm font-extrabold text-lime-200">ONE-ON-ONE</p>
-                        <h3 class="mt-3 text-2xl font-black">マンツーマンレッスン</h3>
-                        <p class="mt-2 leading-7 text-white/75">会話中心の個別レッスン。目標やペースに合わせて内容をカスタマイズ。</p>
-                        <p class="mt-6 text-3xl font-black">¥1,500<span class="text-base font-semibold">〜</span> <span class="text-sm font-medium text-white/70">/ 25分</span></p>
-                        <p class="mt-2 text-xs text-white/60">※料金・プランの詳細はお問い合わせください。</p>
-                        <a href="form.html" class="mt-7 inline-flex w-full items-center justify-center rounded-full bg-white px-6 py-3 font-bold text-forest transition hover:bg-mint">レッスンを相談する →</a>
+                    <article class="grid gap-5 border-t border-forest/15 py-7 md:grid-cols-[1fr_auto_1.2fr_auto] md:items-center">
+                        <h3 class="text-lg font-semibold text-forest">マンツーマンレッスン</h3>
+                        <p class="text-2xl font-medium text-forest">¥1,500<span class="text-base">〜</span> <span class="text-sm text-slate-500">/ 25分</span></p>
+                        <p class="text-sm leading-7 text-slate-600">会話を中心に、目標やペースに合わせて内容を調整します。<span class="block text-xs text-slate-500">※料金・プランの詳細はお問い合わせください。</span></p>
+                        <a href="form.html" class="text-sm font-semibold text-forest underline decoration-forest/30 underline-offset-4 transition hover:text-leaf">問い合わせる ↗</a>
                     </article>
                 </div>
             </div>
         </section>
 
         <section class="py-20 sm:py-24">
-            <div class="mx-auto max-w-6xl px-5 lg:px-8">
-                <div class="text-center">
-                    <p class="text-sm font-extrabold uppercase tracking-[0.2em] text-leaf">How it works</p>
-                    <h2 class="mt-4 text-3xl font-black text-forest sm:text-4xl">受講までのかんたん3ステップ</h2>
+            <div class="mx-auto max-w-6xl px-5 lg:px-10">
+                <div>
+                    <p class="text-xs font-semibold tracking-[0.16em] text-leaf">受講までの流れ</p>
+                    <h2 class="mt-4 font-display text-3xl font-medium text-forest sm:text-4xl">体験レッスンまで、3つのステップ。</h2>
                 </div>
-                <div class="mt-12 grid gap-8 md:grid-cols-3">
-                    <div class="text-center">
-                        <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-mint text-xl font-black text-forest">1</div>
-                        <h3 class="mt-5 font-extrabold text-forest">フォームから予約</h3>
+                <div class="mt-10 grid gap-8 md:grid-cols-3">
+                    <div class="border-t border-forest/30 pt-5">
+                        <p class="text-xs tracking-widest text-leaf">01</p>
+                        <h3 class="mt-4 font-semibold text-forest">フォームから予約</h3>
                         <p class="mt-2 text-sm leading-7 text-slate-600">ご希望の日時や相談内容をお送りください。</p>
                     </div>
-                    <div class="text-center">
-                        <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-mint text-xl font-black text-forest">2</div>
-                        <h3 class="mt-5 font-extrabold text-forest">日程・接続方法を確認</h3>
+                    <div class="border-t border-forest/30 pt-5">
+                        <p class="text-xs tracking-widest text-leaf">02</p>
+                        <h3 class="mt-4 font-semibold text-forest">日程・接続方法を確認</h3>
                         <p class="mt-2 text-sm leading-7 text-slate-600">予約内容を確認して、体験レッスンをご案内します。</p>
                     </div>
-                    <div class="text-center">
-                        <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-mint text-xl font-black text-forest">3</div>
-                        <h3 class="mt-5 font-extrabold text-forest">オンラインで体験</h3>
+                    <div class="border-t border-forest/30 pt-5">
+                        <p class="text-xs tracking-widest text-leaf">03</p>
+                        <h3 class="mt-4 font-semibold text-forest">オンラインで体験</h3>
                         <p class="mt-2 text-sm leading-7 text-slate-600">リラックスして、あなたのペースでお話ししましょう。</p>
                     </div>
                 </div>
@@ -207,18 +186,18 @@
         </section>
 
         <section class="px-5 pb-20 sm:pb-24">
-            <div class="mx-auto max-w-5xl overflow-hidden rounded-[2rem] bg-forest px-6 py-14 text-center text-white sm:px-12 sm:py-16">
-                <p class="text-sm font-extrabold uppercase tracking-[0.2em] text-lime-200">Your English starts here</p>
-                <h2 class="mt-4 text-3xl font-black leading-snug sm:text-4xl">次の一言を、ここから。</h2>
+            <div class="mx-auto max-w-7xl border-y border-forest/15 bg-mint px-6 py-14 text-center text-forest sm:px-12 sm:py-16">
+                <p class="text-xs font-semibold tracking-[0.16em] text-leaf">まずは体験レッスンから</p>
+                <h2 class="mt-4 font-display text-3xl font-medium leading-snug sm:text-4xl">次の一言を、ここから。</h2>
                 <p class="mx-auto mt-4 max-w-xl leading-7 text-white/75">まずは無料体験で、英語を話す楽しさを感じてみませんか？</p>
-                <a href="form.html" class="mt-8 inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-4 font-extrabold text-forest transition hover:bg-mint">無料体験を予約する <span aria-hidden="true">→</span></a>
+                <a href="form.html" class="mt-8 inline-flex items-center justify-center gap-3 bg-forest px-7 py-4 text-sm font-semibold text-white transition hover:bg-leaf">無料体験を予約する <span aria-hidden="true">↗</span></a>
             </div>
         </section>
     </main>
 
-    <footer class="border-t border-forest/10 bg-white">
-        <div class="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-5 py-8 text-center sm:flex-row sm:text-left lg:px-8">
-            <a href="#top" class="text-lg font-extrabold text-forest">Megan <span class="text-leaf">English</span></a>
+    <footer class="border-t border-forest/10 bg-cream">
+        <div class="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-5 py-8 text-center sm:flex-row sm:text-left lg:px-10">
+            <a href="#top" class="text-base font-semibold text-forest">Megan <span class="font-normal text-leaf">English</span></a>
             <p class="text-xs text-slate-500">勉強する英語から、話せる英語へ。</p>
             <p class="text-xs text-slate-400">&copy; 2026 Megan English</p>
         </div>
